@@ -6,6 +6,7 @@ const ModernPostmanRequestBuilder = ({ request, onRequestChange, onSendRequest, 
   const [bodyType, setBodyType] = useState('json');
   const [aiSuggestions, setAiSuggestions] = useState([]);
   const [detectingForms, setDetectingForms] = useState(false);
+  const [formDataPairs, setFormDataPairs] = useState([{ key: '', value: '', type: 'text', enabled: true }]);
 
   // Initialize empty arrays if not provided
   const params = request.params || [];
@@ -128,6 +129,9 @@ const ModernPostmanRequestBuilder = ({ request, onRequestChange, onSendRequest, 
   };
 
   const applySuggestion = (suggestion) => {
+    // Intelligent content type detection based on AI analysis
+    const intelligentBodyType = detectBodyType(suggestion);
+    
     updateRequest({
       method: suggestion.method || 'POST',
       url: suggestion.url || '',
@@ -135,7 +139,163 @@ const ModernPostmanRequestBuilder = ({ request, onRequestChange, onSendRequest, 
       body: suggestion.body || '',
       params: suggestion.params || []
     });
+    
+    // Set appropriate body type based on AI analysis
+    setBodyType(intelligentBodyType);
+    
+    // If it's form-data, parse and set form data pairs
+    if (intelligentBodyType === 'form-data' && suggestion.formData) {
+      setFormDataPairs(suggestion.formData);
+    } else if (intelligentBodyType === 'x-www-form-urlencoded' && suggestion.body) {
+      // Parse URL-encoded data into form pairs
+      const pairs = parseUrlEncodedToFormPairs(suggestion.body);
+      setFormDataPairs(pairs);
+    }
+    
     setAiSuggestions([]);
+  };
+
+  // Intelligent body type detection (like a 10+ year Postman expert would do)
+  const detectBodyType = (suggestion) => {
+    const headers = suggestion.headers || [];
+    const body = suggestion.body || '';
+    
+    // Check Content-Type header first (most reliable)
+    const contentTypeHeader = headers.find(h => 
+      h.key?.toLowerCase() === 'content-type' && h.enabled
+    );
+    
+    if (contentTypeHeader) {
+      const contentType = contentTypeHeader.value.toLowerCase();
+      
+      if (contentType.includes('application/json')) return 'json';
+      if (contentType.includes('multipart/form-data')) return 'form-data';
+      if (contentType.includes('application/x-www-form-urlencoded')) return 'x-www-form-urlencoded';
+      if (contentType.includes('text/')) return 'raw';
+      if (contentType.includes('xml')) return 'raw';
+    }
+    
+    // Analyze body content structure
+    if (body) {
+      try {
+        JSON.parse(body);
+        return 'json'; // Valid JSON
+      } catch (e) {
+        // Not JSON, check other formats
+        if (body.includes('=') && body.includes('&')) {
+          return 'x-www-form-urlencoded'; // URL-encoded form data
+        }
+        if (body.includes('Content-Disposition') && body.includes('boundary')) {
+          return 'form-data'; // Multipart form data
+        }
+      }
+    }
+    
+    // Check if suggestion has file uploads (always form-data for files)
+    if (suggestion.hasFileUploads) {
+      return 'form-data';
+    }
+    
+    // Check method - GET/DELETE typically don't have bodies
+    if (['GET', 'DELETE'].includes(suggestion.method?.toUpperCase())) {
+      return 'none';
+    }
+    
+    // Default based on modern API standards
+    return 'json';
+  };
+
+  // Parse URL-encoded string into form pairs
+  const parseUrlEncodedToFormPairs = (urlEncodedString) => {
+    try {
+      const pairs = [];
+      const params = new URLSearchParams(urlEncodedString);
+      
+      for (const [key, value] of params.entries()) {
+        pairs.push({
+          key,
+          value,
+          type: 'text',
+          enabled: true
+        });
+      }
+      
+      // Add empty pair for adding more
+      pairs.push({ key: '', value: '', type: 'text', enabled: true });
+      return pairs;
+    } catch (e) {
+      return [{ key: '', value: '', type: 'text', enabled: true }];
+    }
+  };
+
+  // Form data management functions (Postman-like interface)
+  const updateFormDataPair = (index, field, value) => {
+    const newPairs = [...formDataPairs];
+    newPairs[index] = { ...newPairs[index], [field]: value };
+    
+    // Auto-add new empty row when the last row is filled
+    if (index === formDataPairs.length - 1 && newPairs[index].key && newPairs[index].value) {
+      newPairs.push({ key: '', value: '', type: 'text', enabled: true });
+    }
+    
+    setFormDataPairs(newPairs);
+    updateRequestFromFormData(newPairs);
+  };
+
+  const addFormDataPair = () => {
+    setFormDataPairs([...formDataPairs, { key: '', value: '', type: 'text', enabled: true }]);
+  };
+
+  const removeFormDataPair = (index) => {
+    if (formDataPairs.length > 1) {
+      const newPairs = formDataPairs.filter((_, i) => i !== index);
+      setFormDataPairs(newPairs);
+      updateRequestFromFormData(newPairs);
+    }
+  };
+
+  // Update request body from form data pairs
+  const updateRequestFromFormData = (pairs) => {
+    const enabledPairs = pairs.filter(pair => pair.enabled && pair.key);
+    
+    if (bodyType === 'x-www-form-urlencoded') {
+      const urlencoded = new URLSearchParams();
+      enabledPairs.forEach(pair => {
+        if (pair.key) urlencoded.append(pair.key, pair.value);
+      });
+      updateRequest({ body: urlencoded.toString() });
+      
+      // Update or add Content-Type header
+      const headers = [...(request.headers || [])];
+      const contentTypeIndex = headers.findIndex(h => h.key?.toLowerCase() === 'content-type');
+      
+      if (contentTypeIndex >= 0) {
+        headers[contentTypeIndex] = { key: 'Content-Type', value: 'application/x-www-form-urlencoded', enabled: true };
+      } else {
+        headers.push({ key: 'Content-Type', value: 'application/x-www-form-urlencoded', enabled: true });
+      }
+      
+      updateRequest({ headers });
+    } else if (bodyType === 'form-data') {
+      // For form-data, we'll store as JSON representation since we can't create actual FormData in textarea
+      const formDataObj = {};
+      enabledPairs.forEach(pair => {
+        if (pair.key) formDataObj[pair.key] = { value: pair.value, type: pair.type };
+      });
+      updateRequest({ body: JSON.stringify(formDataObj, null, 2) });
+      
+      // Update or add Content-Type header for multipart/form-data
+      const headers = [...(request.headers || [])];
+      const contentTypeIndex = headers.findIndex(h => h.key?.toLowerCase() === 'content-type');
+      
+      if (contentTypeIndex >= 0) {
+        headers[contentTypeIndex] = { key: 'Content-Type', value: 'multipart/form-data', enabled: true };
+      } else {
+        headers.push({ key: 'Content-Type', value: 'multipart/form-data', enabled: true });
+      }
+      
+      updateRequest({ headers });
+    }
   };
 
   const formatJson = () => {
@@ -373,10 +533,28 @@ const ModernPostmanRequestBuilder = ({ request, onRequestChange, onSendRequest, 
 
               <div className="body-type-selector">
                 <button
+                  className={`body-type-tab ${bodyType === 'none' ? 'active' : ''}`}
+                  onClick={() => setBodyType('none')}
+                >
+                  none
+                </button>
+                <button
+                  className={`body-type-tab ${bodyType === 'form-data' ? 'active' : ''}`}
+                  onClick={() => setBodyType('form-data')}
+                >
+                  form-data
+                </button>
+                <button
+                  className={`body-type-tab ${bodyType === 'x-www-form-urlencoded' ? 'active' : ''}`}
+                  onClick={() => setBodyType('x-www-form-urlencoded')}
+                >
+                  x-www-form-urlencoded
+                </button>
+                <button
                   className={`body-type-tab ${bodyType === 'raw' ? 'active' : ''}`}
                   onClick={() => setBodyType('raw')}
                 >
-                  Raw
+                  raw
                 </button>
                 <button
                   className={`body-type-tab ${bodyType === 'json' ? 'active' : ''}`}
@@ -384,27 +562,91 @@ const ModernPostmanRequestBuilder = ({ request, onRequestChange, onSendRequest, 
                 >
                   JSON
                 </button>
-                <button
-                  className={`body-type-tab ${bodyType === 'form' ? 'active' : ''}`}
-                  onClick={() => setBodyType('form')}
-                >
-                  Form
-                </button>
               </div>
 
               <div className="body-editor">
-                <textarea
-                  className="smart-textarea"
-                  placeholder={
-                    bodyType === 'json' 
-                      ? '{\n  "key": "value",\n  "number": 123\n}'
-                      : bodyType === 'form'
-                      ? 'key1=value1&key2=value2'
-                      : 'Enter raw body content'
-                  }
-                  value={request.body || ''}
-                  onChange={(e) => updateRequest({ body: e.target.value })}
-                />
+                {bodyType === 'none' && (
+                  <div className="no-body-message">
+                    <p>This request does not have a body</p>
+                  </div>
+                )}
+
+                {(bodyType === 'form-data' || bodyType === 'x-www-form-urlencoded') && (
+                  <div className="form-data-editor">
+                    <div className="form-data-header">
+                      <div className="form-data-columns">
+                        <span>Key</span>
+                        <span>Value</span>
+                        {bodyType === 'form-data' && <span>Type</span>}
+                        <span></span>
+                      </div>
+                    </div>
+                    <div className="form-data-rows">
+                      {formDataPairs.map((pair, index) => (
+                        <div key={index} className="form-data-row">
+                          <input
+                            type="text"
+                            placeholder="Key"
+                            value={pair.key}
+                            onChange={(e) => updateFormDataPair(index, 'key', e.target.value)}
+                            className="form-data-input"
+                          />
+                          <input
+                            type={pair.type === 'file' ? 'file' : 'text'}
+                            placeholder="Value"
+                            value={pair.type === 'file' ? '' : pair.value}
+                            onChange={(e) => updateFormDataPair(index, 'value', e.target.value)}
+                            className="form-data-input"
+                          />
+                          {bodyType === 'form-data' && (
+                            <select
+                              value={pair.type}
+                              onChange={(e) => updateFormDataPair(index, 'type', e.target.value)}
+                              className="form-data-type-select"
+                            >
+                              <option value="text">Text</option>
+                              <option value="file">File</option>
+                            </select>
+                          )}
+                          <div className="form-data-actions">
+                            <input
+                              type="checkbox"
+                              checked={pair.enabled}
+                              onChange={(e) => updateFormDataPair(index, 'enabled', e.target.checked)}
+                              title="Enable/disable this parameter"
+                            />
+                            <button
+                              onClick={() => removeFormDataPair(index)}
+                              className="remove-pair-button"
+                              title="Remove this parameter"
+                            >
+                              ×
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                    <button
+                      onClick={addFormDataPair}
+                      className="add-pair-button"
+                    >
+                      + Add Parameter
+                    </button>
+                  </div>
+                )}
+
+                {(bodyType === 'raw' || bodyType === 'json') && (
+                  <textarea
+                    className="smart-textarea"
+                    placeholder={
+                      bodyType === 'json' 
+                        ? '{\n  "key": "value",\n  "number": 123\n}'
+                        : 'Enter raw body content'
+                    }
+                    value={request.body || ''}
+                    onChange={(e) => updateRequest({ body: e.target.value })}
+                  />
+                )}
               </div>
             </div>
           )}
