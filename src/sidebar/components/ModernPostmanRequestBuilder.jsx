@@ -106,11 +106,22 @@ const ModernPostmanRequestBuilder = ({ request, onRequestChange, onSendRequest, 
         settings
       });
 
-      if (response.success) {
+      console.log('AI Detection Response:', response);
+
+      if (response && response.success) {
         setAiSuggestions(response.suggestions || []);
+        if (response.suggestions && response.suggestions.length > 0) {
+          console.log(`Found ${response.suggestions.length} suggestions`);
+        } else {
+          console.log('No forms detected on this page');
+        }
+      } else {
+        console.error('AI detection failed:', response?.message || 'Unknown error');
+        setAiSuggestions([]);
       }
     } catch (error) {
       console.error('Form detection failed:', error);
+      setAiSuggestions([]);
     } finally {
       setDetectingForms(false);
     }

@@ -62,6 +62,14 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   } else if (request.action === 'highlightForms') {
     highlightPageForms();
     sendResponse({ success: true });
+  } else if (request.action === 'detectForms') {
+    // Detect and analyze forms on the page
+    const formsData = detectPageForms();
+    sendResponse({ success: true, data: formsData });
+  } else if (request.action === 'analyzePage') {
+    // Comprehensive page analysis
+    const pageData = analyzeCurrentPage();
+    sendResponse({ success: true, data: pageData });
   }
 });
 
@@ -154,6 +162,128 @@ const highlightAllLinks = () => {
       link.style.borderRadius = '';
     });
   }, 3000);
+};
+
+// Function to detect and analyze forms
+const detectPageForms = () => {
+  const forms = document.querySelectorAll('form');
+  const inputs = document.querySelectorAll('input, select, textarea');
+  const formsData = [];
+
+  // Get current page info
+  const currentUrl = window.location.href;
+  const baseUrl = window.location.origin;
+  const pageTitle = document.title;
+
+  forms.forEach((form, index) => {
+    const formData = {
+      index: index,
+      action: form.action || currentUrl,
+      method: (form.method || 'GET').toUpperCase(),
+      fields: [],
+      url: form.action ? (form.action.startsWith('http') ? form.action : baseUrl + form.action) : currentUrl,
+      enctype: form.enctype || 'application/x-www-form-urlencoded'
+    };
+
+    // Get all form fields
+    const formInputs = form.querySelectorAll('input, select, textarea');
+    formInputs.forEach(input => {
+      if (input.type !== 'submit' && input.type !== 'button' && input.type !== 'reset') {
+        formData.fields.push({
+          name: input.name || input.id || `field_${formData.fields.length}`,
+          type: input.type || 'text',
+          placeholder: input.placeholder || '',
+          value: input.value || '',
+          required: input.required || false,
+          label: getFieldLabel(input)
+        });
+      }
+    });
+
+    if (formData.fields.length > 0) {
+      formsData.push(formData);
+    }
+  });
+
+  return {
+    url: currentUrl,
+    title: pageTitle,
+    forms: formsData,
+    totalForms: forms.length,
+    totalInputs: inputs.length
+  };
+};
+
+// Function to get field label
+const getFieldLabel = (input) => {
+  // Try to find associated label
+  if (input.id) {
+    const label = document.querySelector(`label[for="${input.id}"]`);
+    if (label) return label.textContent.trim();
+  }
+  
+  // Try parent label
+  const parentLabel = input.closest('label');
+  if (parentLabel) return parentLabel.textContent.replace(input.value, '').trim();
+  
+  // Try previous sibling
+  const prevSibling = input.previousElementSibling;
+  if (prevSibling && (prevSibling.tagName === 'LABEL' || prevSibling.tagName === 'SPAN')) {
+    return prevSibling.textContent.trim();
+  }
+  
+  return input.placeholder || input.name || '';
+};
+
+// Comprehensive page analysis
+const analyzeCurrentPage = () => {
+  const forms = detectPageForms();
+  const links = document.querySelectorAll('a[href]');
+  const apiLinks = [];
+  const buttons = document.querySelectorAll('button, input[type="button"], input[type="submit"]');
+
+  // Find potential API endpoints
+  links.forEach(link => {
+    const href = link.href;
+    if (href && (
+      href.includes('/api/') || 
+      href.includes('/v1/') || 
+      href.includes('/v2/') ||
+      href.includes('.json') ||
+      href.includes('/rest/') ||
+      href.includes('/graphql')
+    )) {
+      apiLinks.push({
+        url: href,
+        text: link.textContent.trim().substring(0, 100),
+        method: 'GET'
+      });
+    }
+  });
+
+  // Analyze buttons for potential actions
+  const actionButtons = [];
+  buttons.forEach(button => {
+    if (button.onclick || button.dataset.action || button.dataset.url) {
+      actionButtons.push({
+        text: button.textContent.trim(),
+        action: button.dataset.action || 'unknown',
+        url: button.dataset.url || ''
+      });
+    }
+  });
+
+  return {
+    ...forms,
+    apiEndpoints: apiLinks.slice(0, 10), // Limit to 10
+    actionButtons: actionButtons.slice(0, 5), // Limit to 5
+    meta: {
+      hasJQuery: typeof window.jQuery !== 'undefined',
+      hasReact: typeof window.React !== 'undefined',
+      hasVue: typeof window.Vue !== 'undefined',
+      hasAngular: typeof window.angular !== 'undefined'
+    }
+  };
 };
 
 // Add button when page loads
