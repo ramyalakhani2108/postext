@@ -1,0 +1,33 @@
+{
+  "manifest_version": 3,
+  "name": "React Sidebar Extension",
+  "version": "1.0",
+  "description": "A Chrome extension with React sidebar",
+  "permissions": [
+    "sidePanel",
+    "activeTab",
+    "storage"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content.js"]
+    }
+  ],
+  "action": {
+    "default_title": "Open Sidebar",
+    "default_popup": "popup.html"
+  },
+  "side_panel": {
+    "default_path": "sidebar/sidebar.html"
+  },
+  "web_accessible_resources": [
+    {
+      "resources": ["sidebar/*"],
+      "matches": ["<all_urls>"]
+    }
+  ]
+}
