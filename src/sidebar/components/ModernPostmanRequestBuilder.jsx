@@ -13,6 +13,11 @@ const ModernPostmanRequestBuilder = ({ request, onRequestChange, onSendRequest, 
   const [bulkEditMode, setBulkEditMode] = useState(false);
   const [bulkEditText, setBulkEditText] = useState('');
   const [showBulkEditModal, setShowBulkEditModal] = useState(false);
+  
+  // Resizable panel state
+  const [aiPanelHeight, setAiPanelHeight] = useState(200); // Default height in pixels
+  const [isResizing, setIsResizing] = useState(false);
+  const [aiPanelCollapsed, setAiPanelCollapsed] = useState(false);
 
   // Initialize empty arrays if not provided
   const params = request.params || [];
@@ -372,27 +377,115 @@ const ModernPostmanRequestBuilder = ({ request, onRequestChange, onSendRequest, 
     document.documentElement.setAttribute('data-theme', prefersDark ? 'dark' : 'light');
   }, []);
 
+  // Resize handling functions
+  const handleMouseDown = (e) => {
+    setIsResizing(true);
+    e.preventDefault();
+  };
+
+  const handleMouseMove = (e) => {
+    if (!isResizing) return;
+    
+    const container = document.querySelector('.postman-request-builder');
+    if (!container) return;
+    
+    const containerRect = container.getBoundingClientRect();
+    const newHeight = containerRect.bottom - e.clientY;
+    
+    // Set minimum and maximum heights
+    const minHeight = 120;
+    const maxHeight = containerRect.height * 0.6; // Max 60% of container height
+    
+    const clampedHeight = Math.max(minHeight, Math.min(maxHeight, newHeight));
+    setAiPanelHeight(clampedHeight);
+  };
+
+  const handleMouseUp = () => {
+    setIsResizing(false);
+  };
+
+  // Add global mouse events for resizing
+  useEffect(() => {
+    if (isResizing) {
+      document.addEventListener('mousemove', handleMouseMove);
+      document.addEventListener('mouseup', handleMouseUp);
+      document.body.style.cursor = 'ns-resize';
+      document.body.style.userSelect = 'none';
+      
+      return () => {
+        document.removeEventListener('mousemove', handleMouseMove);
+        document.removeEventListener('mouseup', handleMouseUp);
+        document.body.style.cursor = '';
+        document.body.style.userSelect = '';
+      };
+    }
+  }, [isResizing]);
+
+  // Toggle AI panel collapse
+  const toggleAiPanel = () => {
+    setAiPanelCollapsed(!aiPanelCollapsed);
+  };
+
 
 
   return (
     <div className={`postman-request-builder ${darkMode ? 'dark-mode' : ''}`}>
       {/* Compact URL Section with integrated branding */}
       <div className="compact-url-section">
-        {/* Subtle branding with dark mode toggle */}
-        <div className="compact-header">
-          <div className="brand-badge">
-            <svg className="brand-icon" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M20 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 14H4V8h16v10z"/>
-            </svg>
-            <span>PostExt</span>
+        {/* Modern Header with Gradient Logo */}
+        <div className="modern-header">
+          <div className="logo-section">
+            <div className="logo-container">
+              <svg className="logo-icon" viewBox="0 0 24 24" fill="none">
+                <defs>
+                  <linearGradient id="logoGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" stopColor="#667eea" />
+                    <stop offset="100%" stopColor="#764ba2" />
+                  </linearGradient>
+                </defs>
+                <path 
+                  d="M3 7V17C3 18.1 3.9 19 5 19H19C20.1 19 21 18.1 21 17V7C21 5.9 20.1 5 19 5H5C3.9 5 3 5.9 3 7Z" 
+                  fill="url(#logoGradient)"
+                />
+                <path 
+                  d="M8 9H16M8 12H14M8 15H12" 
+                  stroke="white" 
+                  strokeWidth="1.5" 
+                  strokeLinecap="round"
+                />
+              </svg>
+              <div className="logo-text">
+                <span className="logo-name">PostExt</span>
+                <span className="logo-tagline">API Builder</span>
+              </div>
+            </div>
           </div>
-          <button
-            className="theme-toggle"
-            onClick={toggleDarkMode}
-            title={`Switch to ${darkMode ? 'light' : 'dark'} mode`}
-          >
-            {darkMode ? '☀️' : '🌙'}
-          </button>
+          
+          <div className="header-actions">
+            <div className="status-indicator">
+              <div className="status-dot"></div>
+              <span className="status-text">Ready</span>
+            </div>
+            <button
+              className="modern-theme-toggle"
+              onClick={toggleDarkMode}
+              title={`Switch to ${darkMode ? 'light' : 'dark'} mode`}
+            >
+              <div className="toggle-track">
+                <div className={`toggle-thumb ${darkMode ? 'dark' : 'light'}`}>
+                  {darkMode ? (
+                    <svg viewBox="0 0 24 24" fill="currentColor">
+                      <path d="M12 3V4M12 20V21M4 12H3M6.31412 6.31412L5.5 5.5M17.6859 6.31412L18.5 5.5M6.31412 17.69L5.5 18.5M17.6859 17.69L18.5 18.5M21 12H20M16 12C16 14.2091 14.2091 16 12 16C9.79086 16 8 14.2091 8 12C8 9.79086 9.79086 8 12 8C14.2091 8 16 9.79086 16 12Z"/>
+                    </svg>
+                  ) : (
+                    <svg viewBox="0 0 24 24" fill="currentColor">
+                      <path d="M21.64 13A9 9 0 1 1 11 2.36A13.5 13.5 0 0 0 21.64 13Z"/>
+                    </svg>
+                  )}
+                </div>
+              </div>
+            </button>
+          </div>
         </div>
         
         <div className="url-input-group">
@@ -438,9 +531,19 @@ const ModernPostmanRequestBuilder = ({ request, onRequestChange, onSendRequest, 
         </div>
       </div>
 
-      {/* Smart Tabs Container */}
-      <div className="smart-tabs-container">
-        <div className="smart-tabs-nav">
+      {/* Main Content Area with Resizable Layout */}
+      <div className="main-content-area">
+        {/* Smart Tabs Container */}
+        <div 
+          className="smart-tabs-container"
+          style={{ 
+            height: aiPanelCollapsed 
+              ? 'calc(100% - 120px)' 
+              : `calc(100% - 120px - ${aiPanelHeight}px)`,
+            transition: isResizing ? 'none' : 'height 0.2s ease'
+          }}
+        >
+          <div className="smart-tabs-nav">
           <button
             className={`smart-tab ${activeTab === 'params' ? 'active' : ''}`}
             onClick={() => setActiveTab('params')}
@@ -748,6 +851,142 @@ const ModernPostmanRequestBuilder = ({ request, onRequestChange, onSendRequest, 
             </div>
           )}
         </div>
+        </div>
+
+        {/* Resizable AI Detection Panel */}
+        {!aiPanelCollapsed && (
+          <>
+            {/* Resize Handle */}
+            <div 
+              className="resize-handle"
+              onMouseDown={handleMouseDown}
+              title="Drag to resize AI panel"
+            >
+              <div className="resize-handle-line"></div>
+            </div>
+            
+            {/* AI Panel */}
+            <div 
+              className="resizable-ai-panel"
+              style={{ 
+                height: `${aiPanelHeight}px`,
+                minHeight: '120px',
+                maxHeight: '400px'
+              }}
+            >
+              <div className="ai-panel-header">
+                <div className="ai-panel-title-section">
+                  <div className="ai-panel-icon">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                      <path d="M12 2C6.48 2 2 6.48 2 12S6.48 22 12 22 22 17.52 22 12 17.52 2 12 2ZM13 17H11V15H13V17ZM13 13H11V7H13V13Z"/>
+                    </svg>
+                  </div>
+                  <div>
+                    <h4 className="ai-panel-title">AI Form Detection</h4>
+                    <p className="ai-panel-subtitle">Analyze page forms and generate API requests</p>
+                  </div>
+                </div>
+                <div className="ai-panel-controls">
+                  <button
+                    className="panel-collapse-button"
+                    onClick={toggleAiPanel}
+                    title="Collapse AI panel"
+                  >
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+                      <path d="M19 13H5V11H19V13Z"/>
+                    </svg>
+                  </button>
+                </div>
+              </div>
+
+              <div className="ai-panel-content">
+                <button
+                  className="ai-detect-button"
+                  onClick={detectForms}
+                  disabled={detectingForms}
+                >
+                  {detectingForms ? (
+                    <>
+                      <div className="loading-spinner"></div>
+                      Analyzing...
+                    </>
+                  ) : (
+                    <>
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M9 11H7V9H9V11ZM13 11H11V9H13V11ZM17 11H15V9H17V11ZM19 3H5C3.9 3 3 3.9 3 5V19C3 20.1 3.9 21 5 21H19C20.1 21 21 20.1 21 19V5C21 3.9 20.1 3 19 3ZM19 19H5V8H19V19Z"/>
+                      </svg>
+                      Detect Forms
+                    </>
+                  )}
+                </button>
+
+                {aiSuggestions.length > 0 ? (
+                  <div className="ai-suggestions">
+                    <div className="suggestions-header">
+                      <h5>✅ Found {aiSuggestions.length} Form{aiSuggestions.length !== 1 ? 's' : ''}</h5>
+                    </div>
+                    <div className="suggestions-list">
+                      {aiSuggestions.map((suggestion, index) => (
+                        <div
+                          key={index}
+                          className="suggestion-item"
+                          onClick={() => applySuggestion(suggestion)}
+                        >
+                          <div className="suggestion-main">
+                            <strong className="suggestion-method">{suggestion.method}</strong> 
+                            <span className="suggestion-url">{suggestion.url}</span>
+                          </div>
+                          <div className="suggestion-details">
+                            <small>{suggestion.description}</small>
+                          </div>
+                          {suggestion.csrfToken && (
+                            <div className="suggestion-security">
+                              <span className="security-badge">🔐 CSRF Protected</span>
+                            </div>
+                          )}
+                          {suggestion.hasFileUploads && (
+                            <div className="suggestion-files">
+                              <span className="file-badge">📎 File Upload</span>
+                            </div>
+                          )}
+                          {suggestion.isAjax && (
+                            <div className="suggestion-ajax">
+                              <span className="ajax-badge">⚡ AJAX Form</span>
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ) : !detectingForms && (
+                  <div className="no-suggestions">
+                    <p>🔍 No forms detected on current page</p>
+                    <small>Try navigating to a page with forms or contact forms</small>
+                  </div>
+                )}
+              </div>
+            </div>
+          </>
+        )}
+
+        {/* Collapsed AI Panel */}
+        {aiPanelCollapsed && (
+          <div className="collapsed-ai-panel">
+            <button
+              className="expand-ai-panel-button"
+              onClick={toggleAiPanel}
+              title="Expand AI panel"
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M12 2C6.48 2 2 6.48 2 12S6.48 22 12 22 22 17.52 22 12 17.52 2 12 2ZM13 17H11V15H13V17ZM13 13H11V7H13V13Z"/>
+              </svg>
+              <span>AI Form Detection</span>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M19 13H13V19H11V13H5V11H11V5H13V11H19V13Z"/>
+              </svg>
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Bulk Edit Modal */}
@@ -796,84 +1035,6 @@ const ModernPostmanRequestBuilder = ({ request, onRequestChange, onSendRequest, 
           </div>
         </div>
       )}
-
-      {/* AI Detection Panel */}
-      <div className="ai-panel">
-        <div className="ai-panel-header">
-          <div className="ai-panel-icon">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M12 2C6.48 2 2 6.48 2 12S6.48 22 12 22 22 17.52 22 12 17.52 2 12 2ZM13 17H11V15H13V17ZM13 13H11V7H13V13Z"/>
-            </svg>
-          </div>
-          <div>
-            <h4 className="ai-panel-title">AI Form Detection</h4>
-            <p className="ai-panel-subtitle">Analyze the current page for forms and generate API requests</p>
-          </div>
-        </div>
-
-        <button
-          className="ai-detect-button"
-          onClick={detectForms}
-          disabled={detectingForms}
-        >
-          {detectingForms ? (
-            <>
-              <div className="loading-spinner"></div>
-              Analyzing...
-            </>
-          ) : (
-            <>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M9 11H7V9H9V11ZM13 11H11V9H13V11ZM17 11H15V9H17V11ZM19 3H5C3.9 3 3 3.9 3 5V19C3 20.1 3.9 21 5 21H19C20.1 21 21 20.1 21 19V5C21 3.9 20.1 3 19 3ZM19 19H5V8H19V19Z"/>
-              </svg>
-              Detect Forms
-            </>
-          )}
-        </button>
-
-        {aiSuggestions.length > 0 ? (
-          <div className="ai-suggestions">
-            <div className="suggestions-header">
-              <h5>✅ Found {aiSuggestions.length} Form{aiSuggestions.length !== 1 ? 's' : ''}</h5>
-            </div>
-            {aiSuggestions.map((suggestion, index) => (
-              <div
-                key={index}
-                className="suggestion-item"
-                onClick={() => applySuggestion(suggestion)}
-              >
-                <div className="suggestion-main">
-                  <strong className="suggestion-method">{suggestion.method}</strong> 
-                  <span className="suggestion-url">{suggestion.url}</span>
-                </div>
-                <div className="suggestion-details">
-                  <small>{suggestion.description}</small>
-                </div>
-                {suggestion.csrfToken && (
-                  <div className="suggestion-security">
-                    <span className="security-badge">🔐 CSRF Protected</span>
-                  </div>
-                )}
-                {suggestion.hasFileUploads && (
-                  <div className="suggestion-files">
-                    <span className="file-badge">📎 File Upload</span>
-                  </div>
-                )}
-                {suggestion.isAjax && (
-                  <div className="suggestion-ajax">
-                    <span className="ajax-badge">⚡ AJAX Form</span>
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
-        ) : !detectingForms && (
-          <div className="no-suggestions">
-            <p>🔍 No forms detected on current page</p>
-            <small>Try navigating to a page with forms or contact forms</small>
-          </div>
-        )}
-      </div>
     </div>
   );
 };
