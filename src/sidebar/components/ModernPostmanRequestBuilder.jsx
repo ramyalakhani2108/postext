@@ -376,35 +376,25 @@ const ModernPostmanRequestBuilder = ({ request, onRequestChange, onSendRequest, 
 
   return (
     <div className={`postman-request-builder ${darkMode ? 'dark-mode' : ''}`}>
-      {/* Header with Dark Mode Toggle */}
-      <div className="request-builder-header">
-        <div className="header-title">
-          <svg className="header-icon" viewBox="0 0 24 24" fill="currentColor">
-            <path d="M12 2L3.09 8.26L4 21L12 17.5L20 21L20.91 8.26L12 2Z"/>
-          </svg>
-          <h2>API Request Builder</h2>
-        </div>
-        <div className="header-controls">
+      {/* Compact URL Section with integrated branding */}
+      <div className="compact-url-section">
+        {/* Subtle branding with dark mode toggle */}
+        <div className="compact-header">
+          <div className="brand-badge">
+            <svg className="brand-icon" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M20 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 14H4V8h16v10z"/>
+            </svg>
+            <span>PostExt</span>
+          </div>
           <button
-            className="dark-mode-toggle"
+            className="theme-toggle"
             onClick={toggleDarkMode}
             title={`Switch to ${darkMode ? 'light' : 'dark'} mode`}
           >
-            {darkMode ? (
-              <svg viewBox="0 0 24 24" fill="currentColor">
-                <path d="M12 18C8.69 18 6 15.31 6 12S8.69 6 12 6 18 8.69 18 12 15.31 18 12 18ZM12 16C14.21 16 16 14.21 16 12S14.21 8 12 8 8 9.79 8 12 9.79 16 12 16ZM12 2L15.39 5.39L22 2V9.39L15.39 5.39L12 2ZM2 12L5.39 8.61L2 2V9.39L8.61 12L2 14.61V22L5.39 15.39L2 12ZM12 22L8.61 18.61L2 22H9.39L12 15.39L14.61 22H22L15.39 18.61L12 22Z"/>
-              </svg>
-            ) : (
-              <svg viewBox="0 0 24 24" fill="currentColor">
-                <path d="M17.75 4.09L15.22 6.03L16.13 9.09L13.5 7.28L10.87 9.09L11.78 6.03L9.25 4.09L12.44 4L13.5 1L14.56 4L17.75 4.09ZM21.25 11L19.61 12.25L20.2 14.23L18.5 13.06L16.8 14.23L17.39 12.25L15.75 11L17.81 10.95L18.5 9L19.19 10.95L21.25 11ZM18.97 15.95C19.8 15.87 20.69 17.05 20.16 17.8C19.84 18.25 19.5 18.67 19.08 19.07C15.17 23 8.84 23 4.94 19.07C1.03 15.17 1.03 8.83 4.94 4.93C5.34 4.53 5.76 4.17 6.21 3.85C6.96 3.32 8.14 4.21 8.06 5.04C7.79 7.9 8.75 10.87 10.95 13.06C13.14 15.26 16.1 16.22 18.97 15.95Z"/>
-              </svg>
-            )}
+            {darkMode ? '☀️' : '🌙'}
           </button>
         </div>
-      </div>
-
-      {/* Smart URL Section */}
-      <div className="smart-url-section">
+        
         <div className="url-input-group">
           <select
             className={`method-selector ${request.method}`}

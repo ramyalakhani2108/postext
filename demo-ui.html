@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PostExt - Professional API Builder Demo</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans', Helvetica, Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        .demo-container {
+            display: flex;
+            gap: 30px;
+            max-width: 1200px;
+            width: 100%;
+        }
+        
+        .demo-panel {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+            width: 400px;
+            height: 600px;
+            position: relative;
+        }
+        
+        .demo-panel.dark {
+            background: #0d1117;
+        }
+        
+        .demo-label {
+            position: absolute;
+            top: -40px;
+            left: 0;
+            background: rgba(255,255,255,0.9);
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: 600;
+            backdrop-filter: blur(10px);
+        }
+        
+        .demo-panel.dark .demo-label {
+            background: rgba(0,0,0,0.8);
+            color: white;
+        }
+        
+        iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+        }
+        
+        .info-panel {
+            background: rgba(255,255,255,0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 12px;
+            padding: 30px;
+            width: 350px;
+            height: fit-content;
+        }
+        
+        .info-panel h1 {
+            margin: 0 0 10px 0;
+            font-size: 28px;
+            font-weight: 700;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        .info-panel h2 {
+            margin: 0 0 20px 0;
+            font-size: 16px;
+            color: #64748b;
+            font-weight: 500;
+        }
+        
+        .features {
+            list-style: none;
+            padding: 0;
+            margin: 20px 0;
+        }
+        
+        .features li {
+            padding: 8px 0;
+            color: #334155;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .features li::before {
+            content: "✨";
+            font-size: 16px;
+        }
+        
+        .tech-stack {
+            background: #f8fafc;
+            border-radius: 8px;
+            padding: 20px;
+            margin-top: 20px;
+        }
+        
+        .tech-stack h3 {
+            margin: 0 0 10px 0;
+            font-size: 14px;
+            font-weight: 600;
+            color: #334155;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .tech-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+        
+        .tech-tag {
+            background: #e2e8f0;
+            color: #475569;
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+    </style>
+</head>
+<body>
+    <div class="demo-container">
+        <div class="info-panel">
+            <h1>PostExt</h1>
+            <h2>Professional API Request Builder</h2>
+            
+            <p>A modern, compact Chrome extension for API development with professional UI/UX design.</p>
+            
+            <ul class="features">
+                <li>Compact, space-efficient design</li>
+                <li>Professional dark/light theme system</li>
+                <li>Postman-style bulk edit feature</li>
+                <li>Smart form data handling</li>
+                <li>AI-powered form detection</li>
+                <li>Clean, minimal interface</li>
+                <li>Professional color scheme</li>
+                <li>Enhanced typography</li>
+            </ul>
+            
+            <div class="tech-stack">
+                <h3>Built With</h3>
+                <div class="tech-tags">
+                    <span class="tech-tag">React</span>
+                    <span class="tech-tag">CSS Variables</span>
+                    <span class="tech-tag">Professional UI</span>
+                    <span class="tech-tag">Dark Mode</span>
+                    <span class="tech-tag">Responsive</span>
+                    <span class="tech-tag">Accessibility</span>
+                </div>
+            </div>
+        </div>
+        
+        <div class="demo-panel">
+            <div class="demo-label">🌅 Light Mode</div>
+            <!-- Light mode iframe would go here -->
+            <div style="padding: 20px; text-align: center; margin-top: 50px;">
+                <h3 style="color: #64748b; margin-bottom: 10px;">Light Theme</h3>
+                <p style="color: #94a3b8; font-size: 14px;">Clean, professional light interface<br>Perfect for daytime development</p>
+                <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 20px; margin: 20px 0; text-align: left;">
+                    <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 15px;">
+                        <div style="width: 14px; height: 14px; background: #0969da; border-radius: 2px;"></div>
+                        <span style="font-size: 12px; font-weight: 500; color: #656d76; text-transform: uppercase; letter-spacing: 0.5px;">PostExt</span>
+                        <div style="margin-left: auto; width: 28px; height: 28px; border: 1px solid #d8dee4; border-radius: 6px; display: flex; align-items: center; justify-content: center;">🌙</div>
+                    </div>
+                    <div style="display: flex; background: white; border: 1px solid #d8dee4; border-radius: 8px; overflow: hidden; margin-bottom: 15px;">
+                        <div style="background: #0969da; color: white; padding: 8px 12px; font-size: 10px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.5px;">GET</div>
+                        <input type="text" placeholder="https://api.example.com/endpoint" style="flex: 1; border: none; padding: 8px 12px; font-size: 14px; font-family: 'SF Mono', monospace;">
+                        <div style="background: #0969da; color: white; padding: 8px 16px; font-size: 10px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.5px;">SEND</div>
+                    </div>
+                    <div style="display: flex; background: #fafbfc; border-bottom: 1px solid #d8dee4;">
+                        <div style="padding: 8px 12px; font-size: 10px; font-weight: 500; color: #0969da; text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 2px solid #0969da; background: white;">PARAMS</div>
+                        <div style="padding: 8px 12px; font-size: 10px; font-weight: 500; color: #656d76; text-transform: uppercase; letter-spacing: 0.5px;">HEADERS</div>
+                        <div style="padding: 8px 12px; font-size: 10px; font-weight: 500; color: #656d76; text-transform: uppercase; letter-spacing: 0.5px;">BODY</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="demo-panel dark">
+            <div class="demo-label">🌙 Dark Mode</div>
+            <!-- Dark mode iframe would go here -->
+            <div style="padding: 20px; text-align: center; margin-top: 50px;">
+                <h3 style="color: #7d8590; margin-bottom: 10px;">Dark Theme</h3>
+                <p style="color: #656d76; font-size: 14px;">Easy-on-eyes dark interface<br>Perfect for nighttime coding</p>
+                <div style="background: #161b22; border: 1px solid #30363d; border-radius: 8px; padding: 20px; margin: 20px 0; text-align: left;">
+                    <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 15px;">
+                        <div style="width: 14px; height: 14px; background: #2f81f7; border-radius: 2px;"></div>
+                        <span style="font-size: 12px; font-weight: 500; color: #7d8590; text-transform: uppercase; letter-spacing: 0.5px;">PostExt</span>
+                        <div style="margin-left: auto; width: 28px; height: 28px; border: 1px solid #30363d; border-radius: 6px; display: flex; align-items: center; justify-content: center;">☀️</div>
+                    </div>
+                    <div style="display: flex; background: #0d1117; border: 1px solid #30363d; border-radius: 8px; overflow: hidden; margin-bottom: 15px;">
+                        <div style="background: #2f81f7; color: white; padding: 8px 12px; font-size: 10px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.5px;">GET</div>
+                        <input type="text" placeholder="https://api.example.com/endpoint" style="flex: 1; border: none; padding: 8px 12px; font-size: 14px; font-family: 'SF Mono', monospace; background: transparent; color: #e6edf3;">
+                        <div style="background: #2f81f7; color: white; padding: 8px 16px; font-size: 10px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.5px;">SEND</div>
+                    </div>
+                    <div style="display: flex; background: #161b22; border-bottom: 1px solid #30363d;">
+                        <div style="padding: 8px 12px; font-size: 10px; font-weight: 500; color: #2f81f7; text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 2px solid #2f81f7; background: #0d1117;">PARAMS</div>
+                        <div style="padding: 8px 12px; font-size: 10px; font-weight: 500; color: #7d8590; text-transform: uppercase; letter-spacing: 0.5px;">HEADERS</div>
+                        <div style="padding: 8px 12px; font-size: 10px; font-weight: 500; color: #7d8590; text-transform: uppercase; letter-spacing: 0.5px;">BODY</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
