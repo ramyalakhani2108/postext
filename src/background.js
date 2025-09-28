@@ -132,14 +132,27 @@ async function handleAIFormDetection(tabId, settings) {
       throw new Error('Failed to analyze page forms - no results returned');
     }
 
-    const formsData = results[0].result;
+    let formsData = results[0].result;
     console.log('Forms data received:', formsData);
     
     // Always ensure we have a valid structure
     if (!formsData) {
       console.log('No forms data returned, creating empty structure');
-      const formsData = { forms: [], apiEndpoints: [] };
+      formsData = { forms: [], apiEndpoints: [] };
     }
+    
+    // Ensure forms array exists and each form has required arrays
+    if (!formsData.forms) {
+      formsData.forms = [];
+    }
+    
+    // Validate and fix each form structure
+    formsData.forms = formsData.forms.map(form => ({
+      ...form,
+      fields: form.fields || [],
+      hiddenFields: form.hiddenFields || [],
+      formContext: form.formContext || {}
+    }));
 
     // Generate AI suggestions based on detected forms
     const suggestions = await generateAISuggestions(formsData, settings);
@@ -271,6 +284,11 @@ function createEnterpriseFormSuggestion(form, index) {
   
   // Determine the optimal request format based on form analysis
   const requestFormat = analyzeFormFormat(form);
+  // Ensure arrays exist with fallbacks
+  const fields = form.fields || [];
+  const hiddenFields = form.hiddenFields || [];
+  const totalFields = fields.length + hiddenFields.length;
+  
   const suggestion = {
     method: form.method || 'POST',
     url: form.url || form.action,
@@ -278,7 +296,7 @@ function createEnterpriseFormSuggestion(form, index) {
     params: [],
     body: '',
     formData: [], // For form-data interface
-    description: `${form.formContext?.isModal ? 'Modal ' : ''}Form ${index + 1}: ${form.fields.length + form.hiddenFields.length} fields (${form.hiddenFields.length} hidden)`,
+    description: `${form.formContext?.isModal ? 'Modal ' : ''}Form ${index + 1}: ${totalFields} fields (${hiddenFields.length} hidden)`,
     hasFileUploads: form.formContext?.hasFileUpload || false,
     isAjax: form.formContext?.isAjax || false,
     csrfToken: form.csrfToken
@@ -321,7 +339,8 @@ function analyzeFormFormat(form) {
   // AJAX forms often use JSON
   if (form.formContext?.isAjax) {
     // Check if form has complex nested data structures
-    const hasComplexFields = form.fields.some(field => 
+    const fields = form.fields || [];
+    const hasComplexFields = fields.some(field => 
       field.name.includes('[') || 
       field.name.includes('.')
     );
@@ -374,7 +393,8 @@ function buildFormDataPairs(form) {
   const pairs = [];
 
   // Add hidden fields first (including CSRF)
-  form.hiddenFields.forEach(field => {
+  const hiddenFields = form.hiddenFields || [];
+  hiddenFields.forEach(field => {
     pairs.push({
       key: field.name,
       value: field.value || generateSampleValue(field.type, field.name),
@@ -384,7 +404,8 @@ function buildFormDataPairs(form) {
   });
 
   // Add visible fields
-  form.fields.forEach(field => {
+  const fields = form.fields || [];
+  fields.forEach(field => {
     pairs.push({
       key: field.name,
       value: field.value || generateSampleValue(field.type, field.name),
@@ -404,7 +425,8 @@ function buildFormDataBody(form) {
   const formDataObj = {};
   
   // Include hidden fields
-  form.hiddenFields.forEach(field => {
+  const hiddenFields = form.hiddenFields || [];
+  hiddenFields.forEach(field => {
     formDataObj[field.name] = {
       value: field.value || generateSampleValue(field.type, field.name),
       type: 'hidden'
@@ -412,7 +434,8 @@ function buildFormDataBody(form) {
   });
 
   // Include visible fields
-  form.fields.forEach(field => {
+  const fields = form.fields || [];
+  fields.forEach(field => {
     formDataObj[field.name] = {
       value: field.value || generateSampleValue(field.type, field.name),
       type: field.type
@@ -427,13 +450,15 @@ function buildUrlEncodedBody(form) {
   const params = [];
 
   // Include hidden fields (especially CSRF)
-  form.hiddenFields.forEach(field => {
+  const hiddenFields = form.hiddenFields || [];
+  hiddenFields.forEach(field => {
     const value = field.value || generateSampleValue(field.type, field.name);
     params.push(`${encodeURIComponent(field.name)}=${encodeURIComponent(value)}`);
   });
 
   // Include visible fields
-  form.fields.forEach(field => {
+  const fields = form.fields || [];
+  fields.forEach(field => {
     const value = field.value || generateSampleValue(field.type, field.name);
     params.push(`${encodeURIComponent(field.name)}=${encodeURIComponent(value)}`);
   });
@@ -446,12 +471,14 @@ function buildJsonBody(form) {
   const jsonData = {};
 
   // Include hidden fields
-  form.hiddenFields.forEach(field => {
+  const hiddenFields = form.hiddenFields || [];
+  hiddenFields.forEach(field => {
     jsonData[field.name] = field.value || generateSampleValue(field.type, field.name);
   });
 
   // Include visible fields with smart type conversion
-  form.fields.forEach(field => {
+  const fields = form.fields || [];
+  fields.forEach(field => {
     let value = field.value || generateSampleValue(field.type, field.name);
     
     // Smart type conversion for JSON

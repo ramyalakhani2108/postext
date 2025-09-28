@@ -204,6 +204,12 @@
         };
         
         console.log('💡 Run testFormDetection() to manually test form detection');
+        
+        // Auto-run the test on page load
+        setTimeout(() => {
+            console.log('🔄 Auto-running form detection test...');
+            testFormDetection();
+        }, 1000);
     </script>
 </body>
 </html>

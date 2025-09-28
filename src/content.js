@@ -212,6 +212,10 @@ const detectPageForms = () => {
         }
       };
 
+      // Ensure arrays are properly initialized
+      formData.fields = [];
+      formData.hiddenFields = [];
+
       // Get all form fields including hidden ones
       const formInputs = form.querySelectorAll('input, select, textarea');
       formInputs.forEach(input => {
