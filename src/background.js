@@ -265,67 +265,224 @@ function analyzePageForms() {
   }
 }
 
-// Function to generate AI suggestions
+// Enterprise-level form suggestion generator (10+ years Postman experience)
+function createEnterpriseFormSuggestion(form, index) {
+  console.log('Creating enterprise suggestion for form:', form);
+  
+  // Determine the optimal request format based on form analysis
+  const requestFormat = analyzeFormFormat(form);
+  const suggestion = {
+    method: form.method || 'POST',
+    url: form.url || form.action,
+    headers: buildEnterpriseHeaders(form, requestFormat),
+    params: [],
+    body: '',
+    formData: [], // For form-data interface
+    description: `${form.formContext?.isModal ? 'Modal ' : ''}Form ${index + 1}: ${form.fields.length + form.hiddenFields.length} fields (${form.hiddenFields.length} hidden)`,
+    hasFileUploads: form.formContext?.hasFileUpload || false,
+    isAjax: form.formContext?.isAjax || false,
+    csrfToken: form.csrfToken
+  };
+
+  // Build the request based on format
+  if (requestFormat === 'form-data') {
+    suggestion.formData = buildFormDataPairs(form);
+    suggestion.body = buildFormDataBody(form); // JSON representation for display
+  } else if (requestFormat === 'x-www-form-urlencoded') {
+    suggestion.body = buildUrlEncodedBody(form);
+  } else if (requestFormat === 'json') {
+    suggestion.body = buildJsonBody(form);
+  }
+
+  // Add cookies if available
+  if (form.cookies) {
+    suggestion.headers.push({
+      key: 'Cookie',
+      value: form.cookies,
+      enabled: true
+    });
+  }
+
+  return suggestion;
+}
+
+// Analyze form to determine optimal request format
+function analyzeFormFormat(form) {
+  // File uploads always require multipart/form-data
+  if (form.formContext?.hasFileUpload) {
+    return 'form-data';
+  }
+
+  // Check enctype
+  if (form.enctype === 'multipart/form-data') {
+    return 'form-data';
+  }
+
+  // AJAX forms often use JSON
+  if (form.formContext?.isAjax) {
+    // Check if form has complex nested data structures
+    const hasComplexFields = form.fields.some(field => 
+      field.name.includes('[') || 
+      field.name.includes('.')
+    );
+    
+    if (hasComplexFields) {
+      return 'json';
+    }
+  }
+
+  // Default to URL-encoded for standard forms
+  return 'x-www-form-urlencoded';
+}
+
+// Build enterprise-level headers
+function buildEnterpriseHeaders(form, requestFormat) {
+  const headers = [];
+
+  // Set Content-Type based on format
+  if (requestFormat === 'form-data') {
+    headers.push({ key: 'Content-Type', value: 'multipart/form-data', enabled: true });
+  } else if (requestFormat === 'json') {
+    headers.push({ key: 'Content-Type', value: 'application/json', enabled: true });
+  } else {
+    headers.push({ key: 'Content-Type', value: 'application/x-www-form-urlencoded', enabled: true });
+  }
+
+  // Add enterprise headers from form context
+  if (form.requiredHeaders) {
+    Object.entries(form.requiredHeaders).forEach(([key, value]) => {
+      if (key !== 'Content-Type') { // Don't duplicate Content-Type
+        headers.push({ key, value, enabled: true });
+      }
+    });
+  }
+
+  // Add CSRF token to headers if found in meta tags
+  if (form.csrfToken && form.csrfToken.value) {
+    headers.push({
+      key: 'X-CSRF-TOKEN',
+      value: form.csrfToken.value,
+      enabled: true
+    });
+  }
+
+  return headers;
+}
+
+// Build form-data pairs for the UI
+function buildFormDataPairs(form) {
+  const pairs = [];
+
+  // Add hidden fields first (including CSRF)
+  form.hiddenFields.forEach(field => {
+    pairs.push({
+      key: field.name,
+      value: field.value || generateSampleValue(field.type, field.name),
+      type: 'text',
+      enabled: true
+    });
+  });
+
+  // Add visible fields
+  form.fields.forEach(field => {
+    pairs.push({
+      key: field.name,
+      value: field.value || generateSampleValue(field.type, field.name),
+      type: field.type === 'file' ? 'file' : 'text',
+      enabled: true
+    });
+  });
+
+  // Add empty pair for user additions
+  pairs.push({ key: '', value: '', type: 'text', enabled: true });
+
+  return pairs;
+}
+
+// Build form-data body (JSON representation for display)
+function buildFormDataBody(form) {
+  const formDataObj = {};
+  
+  // Include hidden fields
+  form.hiddenFields.forEach(field => {
+    formDataObj[field.name] = {
+      value: field.value || generateSampleValue(field.type, field.name),
+      type: 'hidden'
+    };
+  });
+
+  // Include visible fields
+  form.fields.forEach(field => {
+    formDataObj[field.name] = {
+      value: field.value || generateSampleValue(field.type, field.name),
+      type: field.type
+    };
+  });
+
+  return JSON.stringify(formDataObj, null, 2);
+}
+
+// Build URL-encoded body
+function buildUrlEncodedBody(form) {
+  const params = [];
+
+  // Include hidden fields (especially CSRF)
+  form.hiddenFields.forEach(field => {
+    const value = field.value || generateSampleValue(field.type, field.name);
+    params.push(`${encodeURIComponent(field.name)}=${encodeURIComponent(value)}`);
+  });
+
+  // Include visible fields
+  form.fields.forEach(field => {
+    const value = field.value || generateSampleValue(field.type, field.name);
+    params.push(`${encodeURIComponent(field.name)}=${encodeURIComponent(value)}`);
+  });
+
+  return params.join('&');
+}
+
+// Build JSON body
+function buildJsonBody(form) {
+  const jsonData = {};
+
+  // Include hidden fields
+  form.hiddenFields.forEach(field => {
+    jsonData[field.name] = field.value || generateSampleValue(field.type, field.name);
+  });
+
+  // Include visible fields with smart type conversion
+  form.fields.forEach(field => {
+    let value = field.value || generateSampleValue(field.type, field.name);
+    
+    // Smart type conversion for JSON
+    if (field.type === 'number' || field.type === 'range') {
+      value = parseFloat(value) || 0;
+    } else if (field.type === 'checkbox') {
+      value = field.value === 'on' || field.value === 'true';
+    } else if (field.name.includes('[') && field.name.includes(']')) {
+      // Handle array fields
+      const arrayName = field.name.substring(0, field.name.indexOf('['));
+      if (!jsonData[arrayName]) jsonData[arrayName] = [];
+      jsonData[arrayName].push(value);
+      return; // Skip normal assignment
+    }
+    
+    jsonData[field.name] = value;
+  });
+
+  return JSON.stringify(jsonData, null, 2);
+}
+
 async function generateAISuggestions(formsData, settings) {
   const suggestions = [];
 
   try {
-    console.log('Generating AI suggestions from:', formsData);
+    console.log('Generating enterprise-level AI suggestions from:', formsData);
 
-    // Process detected forms
+    // Process detected forms with enterprise context
     if (formsData.forms && formsData.forms.length > 0) {
       formsData.forms.forEach((form, index) => {
-        const suggestion = {
-          method: form.method || 'POST',
-          url: form.url || form.action,
-          headers: [
-            { key: 'Content-Type', value: 'application/x-www-form-urlencoded', enabled: true }
-          ],
-          params: [],
-          body: '',
-          description: `Form ${index + 1}: ${form.fields.length} fields detected`
-        };
-
-        // Convert form fields to body parameters
-        if (form.fields.length > 0) {
-          const bodyParams = [];
-          const urlParams = [];
-          
-          form.fields.forEach(field => {
-            const sampleValue = field.value || field.placeholder || generateSampleValue(field.type, field.name);
-            
-            if (form.method === 'GET') {
-              urlParams.push({ key: field.name, value: sampleValue, enabled: true });
-            } else {
-              bodyParams.push(`${field.name}=${encodeURIComponent(sampleValue)}`);
-            }
-          });
-
-          if (form.method === 'GET') {
-            suggestion.params = urlParams;
-          } else {
-            suggestion.body = bodyParams.join('&');
-            // Check if form has file inputs
-            if (form.fields.some(f => f.type === 'file')) {
-              suggestion.headers = [
-                { key: 'Content-Type', value: 'multipart/form-data', enabled: true }
-              ];
-            }
-            // Check if form might be JSON-based
-            if (form.fields.some(f => f.name.includes('json') || f.placeholder.includes('{'))) {
-              suggestion.headers = [
-                { key: 'Content-Type', value: 'application/json', enabled: true }
-              ];
-              // Convert to JSON format
-              const jsonData = {};
-              form.fields.forEach(field => {
-                jsonData[field.name] = field.value || field.placeholder || generateSampleValue(field.type, field.name);
-              });
-              suggestion.body = JSON.stringify(jsonData, null, 2);
-            }
-          }
-        }
-
+        const suggestion = createEnterpriseFormSuggestion(form, index);
         suggestions.push(suggestion);
       });
     }

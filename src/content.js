@@ -175,32 +175,81 @@ const detectPageForms = () => {
   const baseUrl = window.location.origin;
   const pageTitle = document.title;
 
+  // Extract enterprise-level context
+  const enterpriseContext = extractEnterpriseContext();
+
   forms.forEach((form, index) => {
     const formData = {
       index: index,
       action: form.action || currentUrl,
-      method: (form.method || 'GET').toUpperCase(),
+      method: (form.method || 'POST').toUpperCase(), // Default to POST for forms
       fields: [],
-      url: form.action ? (form.action.startsWith('http') ? form.action : baseUrl + form.action) : currentUrl,
-      enctype: form.enctype || 'application/x-www-form-urlencoded'
+      hiddenFields: [],
+      url: form.action ? (form.action.startsWith('http') ? form.action : new URL(form.action, baseUrl).href) : currentUrl,
+      enctype: form.enctype || 'application/x-www-form-urlencoded',
+      // Enterprise context
+      cookies: enterpriseContext.cookies,
+      requiredHeaders: enterpriseContext.headers,
+      csrfToken: null,
+      formContext: {
+        isModal: isInModal(form),
+        hasFileUpload: false,
+        submitButton: null
+      }
     };
 
-    // Get all form fields
+    // Get all form fields including hidden ones
     const formInputs = form.querySelectorAll('input, select, textarea');
     formInputs.forEach(input => {
+      const fieldData = {
+        name: input.name || input.id || `field_${formData.fields.length}`,
+        type: input.type || 'text',
+        placeholder: input.placeholder || '',
+        value: input.value || '',
+        required: input.required || false,
+        label: getFieldLabel(input),
+        isHidden: input.type === 'hidden' || input.style.display === 'none' || input.hidden
+      };
+
+      // Check for CSRF token
+      if (fieldData.name.toLowerCase().includes('csrf') || 
+          fieldData.name.toLowerCase().includes('token') ||
+          fieldData.name.toLowerCase().includes('_token')) {
+        formData.csrfToken = {
+          name: fieldData.name,
+          value: fieldData.value
+        };
+      }
+
+      // Check for file uploads
+      if (input.type === 'file') {
+        formData.formContext.hasFileUpload = true;
+        formData.enctype = 'multipart/form-data'; // Override for file uploads
+      }
+
       if (input.type !== 'submit' && input.type !== 'button' && input.type !== 'reset') {
-        formData.fields.push({
-          name: input.name || input.id || `field_${formData.fields.length}`,
-          type: input.type || 'text',
-          placeholder: input.placeholder || '',
-          value: input.value || '',
-          required: input.required || false,
-          label: getFieldLabel(input)
-        });
+        if (fieldData.isHidden) {
+          formData.hiddenFields.push(fieldData);
+        } else {
+          formData.fields.push(fieldData);
+        }
       }
     });
 
-    if (formData.fields.length > 0) {
+    // Find submit button
+    const submitBtn = form.querySelector('input[type="submit"], button[type="submit"], button:not([type])');
+    if (submitBtn) {
+      formData.formContext.submitButton = {
+        text: submitBtn.textContent || submitBtn.value || 'Submit',
+        name: submitBtn.name || '',
+        value: submitBtn.value || ''
+      };
+    }
+
+    // Detect AJAX form submission
+    formData.formContext.isAjax = hasAjaxSubmission(form);
+
+    if (formData.fields.length > 0 || formData.hiddenFields.length > 0) {
       formsData.push(formData);
     }
   });
@@ -233,6 +282,93 @@ const getFieldLabel = (input) => {
   }
   
   return input.placeholder || input.name || '';
+};
+
+// Enterprise-level context extraction
+const extractEnterpriseContext = () => {
+  const context = {
+    cookies: document.cookie,
+    headers: {},
+    metaTags: {},
+    authTokens: []
+  };
+
+  // Extract meta tags (especially CSRF)
+  const metaTags = document.querySelectorAll('meta');
+  metaTags.forEach(meta => {
+    const name = meta.getAttribute('name') || meta.getAttribute('property');
+    const content = meta.getAttribute('content');
+    if (name && content) {
+      context.metaTags[name] = content;
+      
+      // Check for CSRF token in meta tags
+      if (name.toLowerCase().includes('csrf') || name.toLowerCase().includes('token')) {
+        context.authTokens.push({
+          type: 'csrf_meta',
+          name: name,
+          value: content
+        });
+      }
+    }
+  });
+
+  // Extract common headers needed for form submission
+  context.headers = {
+    'Content-Type': 'application/x-www-form-urlencoded',
+    'X-Requested-With': 'XMLHttpRequest', // Common for AJAX requests
+    'Accept': 'application/json, text/javascript, */*; q=0.01',
+    'Cache-Control': 'no-cache',
+    'Referer': window.location.href,
+    'Origin': window.location.origin
+  };
+
+  // Check for common CSRF header patterns
+  if (context.metaTags['csrf-token']) {
+    context.headers['X-CSRF-TOKEN'] = context.metaTags['csrf-token'];
+  }
+  if (context.metaTags['_token']) {
+    context.headers['X-CSRF-TOKEN'] = context.metaTags['_token'];
+  }
+
+  return context;
+};
+
+// Check if form is inside a modal/popup
+const isInModal = (form) => {
+  const modalSelectors = [
+    '.modal', '.popup', '.dialog', '.overlay',
+    '[role="dialog"]', '[aria-modal="true"]',
+    '.fancybox', '.lightbox', '.ui-dialog'
+  ];
+  
+  for (const selector of modalSelectors) {
+    if (form.closest(selector)) {
+      return true;
+    }
+  }
+  return false;
+};
+
+// Detect if form uses AJAX submission
+const hasAjaxSubmission = (form) => {
+  // Check for common AJAX indicators
+  const hasDataAttributes = form.hasAttribute('data-remote') || 
+                           form.hasAttribute('data-ajax') ||
+                           form.hasAttribute('data-async');
+  
+  // Check for event listeners (basic detection)
+  const hasAjaxClass = form.classList.contains('ajax-form') ||
+                      form.classList.contains('remote-form') ||
+                      form.classList.contains('async-form');
+
+  // Check if form action is an API endpoint
+  const actionUrl = form.action || '';
+  const isApiEndpoint = actionUrl.includes('/api/') || 
+                       actionUrl.includes('/ajax/') ||
+                       actionUrl.includes('.json') ||
+                       actionUrl.endsWith('/json');
+
+  return hasDataAttributes || hasAjaxClass || isApiEndpoint;
 };
 
 // Comprehensive page analysis
