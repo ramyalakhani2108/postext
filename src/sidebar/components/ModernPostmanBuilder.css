@@ -801,3 +801,113 @@
   color: white;
   box-shadow: var(--shadow-sm);
 }
+
+/* Enhanced AI Detection Panel */
+.suggestions-header {
+  margin-bottom: var(--space-3);
+  padding: var(--space-2);
+  background: var(--green-50);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--green-200);
+}
+
+.suggestions-header h5 {
+  margin: 0;
+  color: var(--green-700);
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.suggestion-item {
+  cursor: pointer;
+  transition: all 0.2s ease;
+  margin-bottom: var(--space-2);
+}
+
+.suggestion-item:hover {
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-md);
+}
+
+.suggestion-main {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-1);
+}
+
+.suggestion-method {
+  background: var(--primary-600);
+  color: white;
+  padding: 2px 8px;
+  border-radius: var(--radius-sm);
+  font-size: 0.75rem;
+  font-weight: 600;
+  min-width: 50px;
+  text-align: center;
+}
+
+.suggestion-url {
+  color: var(--gray-700);
+  font-size: 0.875rem;
+  word-break: break-all;
+}
+
+.suggestion-details {
+  margin-bottom: var(--space-2);
+}
+
+.suggestion-details small {
+  color: var(--gray-600);
+  font-size: 0.75rem;
+}
+
+.suggestion-security,
+.suggestion-files,
+.suggestion-ajax {
+  display: inline-block;
+  margin-right: var(--space-2);
+  margin-bottom: var(--space-1);
+}
+
+.security-badge,
+.file-badge,
+.ajax-badge {
+  background: var(--blue-100);
+  color: var(--blue-700);
+  padding: 2px 6px;
+  border-radius: var(--radius-sm);
+  font-size: 0.625rem;
+  font-weight: 500;
+}
+
+.security-badge {
+  background: var(--red-100);
+  color: var(--red-700);
+}
+
+.file-badge {
+  background: var(--orange-100);
+  color: var(--orange-700);
+}
+
+.ajax-badge {
+  background: var(--purple-100);
+  color: var(--purple-700);
+}
+
+.no-suggestions {
+  text-align: center;
+  padding: var(--space-6);
+  color: var(--gray-500);
+}
+
+.no-suggestions p {
+  margin: 0 0 var(--space-2) 0;
+  font-size: 0.875rem;
+}
+
+.no-suggestions small {
+  font-size: 0.75rem;
+  color: var(--gray-400);
+}

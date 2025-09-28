@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Form Detection Test Page</title>
+    <meta name="csrf-token" content="test-csrf-token-123456">
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        .modal { 
+            position: fixed; top: 50px; left: 50px; 
+            background: white; border: 2px solid #ccc; 
+            padding: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            width: 400px; z-index: 1000;
+        }
+        .form-group { margin: 10px 0; }
+        label { display: block; margin-bottom: 5px; font-weight: bold; }
+        input, select, textarea { 
+            width: 100%; padding: 8px; border: 1px solid #ddd; 
+            border-radius: 4px; box-sizing: border-box;
+        }
+        button { 
+            background: #007cba; color: white; padding: 10px 20px; 
+            border: none; border-radius: 4px; cursor: pointer; margin-right: 10px;
+        }
+        button:hover { background: #005a8b; }
+        .secondary { background: #6c757d; }
+        .secondary:hover { background: #5a6268; }
+        h2 { color: #333; border-bottom: 2px solid #007cba; padding-bottom: 10px; }
+    </style>
+</head>
+<body>
+    <h1>🧪 Form Detection Test Page</h1>
+    <p>This page contains various types of forms to test the extension's detection capabilities.</p>
+
+    <!-- Regular Form -->
+    <h2>1. Regular Contact Form</h2>
+    <form action="/submit-contact" method="POST">
+        <div class="form-group">
+            <label for="name">Name *</label>
+            <input type="text" id="name" name="name" required placeholder="Enter your name">
+        </div>
+        <div class="form-group">
+            <label for="email">Email *</label>
+            <input type="email" id="email" name="email" required placeholder="Enter your email">
+        </div>
+        <div class="form-group">
+            <label for="message">Message</label>
+            <textarea id="message" name="message" placeholder="Enter your message"></textarea>
+        </div>
+        <button type="submit">Send Message</button>
+    </form>
+
+    <!-- Modal Form (like your image) -->
+    <h2>2. Modal Form (Task Creation)</h2>
+    <div class="modal" role="dialog" aria-modal="true">
+        <h3>Add New Task</h3>
+        <form action="/api/tasks" method="POST" enctype="multipart/form-data">
+            <input type="hidden" name="_token" value="csrf-token-hidden-field-12345">
+            <input type="hidden" name="project_id" value="123">
+            
+            <div class="form-group">
+                <label>
+                    <input type="checkbox" name="is_public" value="on"> Public
+                </label>
+                <label>
+                    <input type="checkbox" name="billable" value="on" checked> Billable
+                </label>
+            </div>
+            
+            <div class="form-group">
+                <label for="subject">Subject *</label>
+                <input type="text" id="subject" name="subject" required placeholder="Task subject">
+            </div>
+            
+            <div class="form-group">
+                <label for="hourly_rate">Hourly Rate</label>
+                <input type="number" id="hourly_rate" name="hourly_rate" value="0" min="0" step="0.01">
+            </div>
+            
+            <div class="form-group">
+                <label for="start_date">Start Date *</label>
+                <input type="date" id="start_date" name="startdate" value="2025-09-28" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="due_date">Due Date</label>
+                <input type="date" id="due_date" name="duedate">
+            </div>
+            
+            <div class="form-group">
+                <label for="priority">Priority</label>
+                <select id="priority" name="priority">
+                    <option value="1">Low</option>
+                    <option value="2" selected>Medium</option>
+                    <option value="3">High</option>
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label for="assignees">Assignees</label>
+                <select id="assignees" name="assignees[]" multiple>
+                    <option value="1" selected>Brennan Beer</option>
+                    <option value="2">John Doe</option>
+                    <option value="3">Jane Smith</option>
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label for="tags">Tags</label>
+                <input type="text" id="tags" name="tags" placeholder="Enter tags">
+            </div>
+            
+            <div class="form-group">
+                <label for="description">Task Description</label>
+                <textarea id="description" name="description" placeholder="Add Description"></textarea>
+            </div>
+            
+            <div class="form-group">
+                <label for="attachment">Attachment</label>
+                <input type="file" id="attachment" name="attachments[]" multiple>
+            </div>
+            
+            <button type="button" class="secondary">Close</button>
+            <button type="submit">Save</button>
+        </form>
+    </div>
+
+    <!-- AJAX Form -->
+    <h2>3. AJAX API Form</h2>
+    <form action="/api/users" method="POST" class="ajax-form" data-remote="true">
+        <input type="hidden" name="csrf_token_name" value="18b24f85eac7bb79f8d6a5b1d6033498">
+        
+        <div class="form-group">
+            <label for="username">Username</label>
+            <input type="text" id="username" name="username" placeholder="Enter username">
+        </div>
+        
+        <div class="form-group">
+            <label for="user_email">Email</label>
+            <input type="email" id="user_email" name="email" placeholder="Enter email">
+        </div>
+        
+        <div class="form-group">
+            <label for="role">Role</label>
+            <select id="role" name="role">
+                <option value="user">User</option>
+                <option value="admin">Admin</option>
+            </select>
+        </div>
+        
+        <button type="submit">Create User</button>
+    </form>
+
+    <!-- Search Form (GET) -->
+    <h2>4. Search Form</h2>
+    <form action="/search" method="GET">
+        <div class="form-group">
+            <label for="query">Search Query</label>
+            <input type="text" id="query" name="q" placeholder="Search...">
+        </div>
+        
+        <div class="form-group">
+            <label for="category">Category</label>
+            <select id="category" name="category">
+                <option value="">All Categories</option>
+                <option value="tasks">Tasks</option>
+                <option value="projects">Projects</option>
+                <option value="users">Users</option>
+            </select>
+        </div>
+        
+        <button type="submit">Search</button>
+    </form>
+
+    <script>
+        // Simulate some dynamic behavior
+        console.log('Test page loaded with', document.querySelectorAll('form').length, 'forms');
+        
+        // Add some cookies for testing
+        document.cookie = "session_id=abc123; path=/";
+        document.cookie = "auth_token=xyz789; path=/";
+        document.cookie = "user_pref=test; path=/";
+        
+        // Add manual testing function
+        window.testFormDetection = function() {
+            console.log('🧪 Manual Form Detection Test');
+            
+            const forms = document.querySelectorAll('form');
+            console.log(`📊 Found ${forms.length} forms:`);
+            
+            forms.forEach((form, i) => {
+                console.log(`📋 Form ${i + 1}:`);
+                console.log('  Action:', form.action || 'none');
+                console.log('  Method:', form.method || 'GET');
+                console.log('  Enctype:', form.enctype || 'default');
+                console.log('  In Modal:', form.closest('.modal') ? 'YES' : 'NO');
+                console.log('  Fields:', form.querySelectorAll('input, select, textarea').length);
+                console.log('  Hidden Fields:', form.querySelectorAll('input[type="hidden"]').length);
+                console.log('---');
+            });
+            
+            console.log('💡 Run testFormDetection() in console to see this analysis');
+        };
+        
+        console.log('💡 Run testFormDetection() to manually test form detection');
+    </script>
+</body>
+</html>

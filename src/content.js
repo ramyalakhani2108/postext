@@ -166,41 +166,55 @@ const highlightAllLinks = () => {
 
 // Function to detect and analyze forms
 const detectPageForms = () => {
+  console.log('🔍 Starting form detection...');
+  
   const forms = document.querySelectorAll('form');
   const inputs = document.querySelectorAll('input, select, textarea');
   const formsData = [];
+
+  console.log(`Found ${forms.length} forms and ${inputs.length} inputs on page`);
+  console.log('Forms found:', Array.from(forms).map((f, i) => `Form ${i}: ${f.action || 'no action'} - ${f.method || 'no method'}`));
 
   // Get current page info
   const currentUrl = window.location.href;
   const baseUrl = window.location.origin;
   const pageTitle = document.title;
 
-  // Extract enterprise-level context
-  const enterpriseContext = extractEnterpriseContext();
+  // Extract enterprise-level context (with error handling)
+  let enterpriseContext = { cookies: '', headers: {}, metaTags: {}, authTokens: [] };
+  try {
+    enterpriseContext = extractEnterpriseContext();
+  } catch (e) {
+    console.warn('Enterprise context extraction failed, using defaults:', e);
+  }
 
   forms.forEach((form, index) => {
-    const formData = {
-      index: index,
-      action: form.action || currentUrl,
-      method: (form.method || 'POST').toUpperCase(), // Default to POST for forms
-      fields: [],
-      hiddenFields: [],
-      url: form.action ? (form.action.startsWith('http') ? form.action : new URL(form.action, baseUrl).href) : currentUrl,
-      enctype: form.enctype || 'application/x-www-form-urlencoded',
-      // Enterprise context
-      cookies: enterpriseContext.cookies,
-      requiredHeaders: enterpriseContext.headers,
-      csrfToken: null,
-      formContext: {
-        isModal: isInModal(form),
-        hasFileUpload: false,
-        submitButton: null
-      }
-    };
+    console.log(`📋 Processing form ${index + 1}:`, form);
+    
+    try {
+      const formData = {
+        index: index,
+        action: form.action || currentUrl,
+        method: (form.method || 'POST').toUpperCase(),
+        fields: [],
+        hiddenFields: [],
+        url: form.action ? (form.action.startsWith('http') ? form.action : new URL(form.action, baseUrl).href) : currentUrl,
+        enctype: form.enctype || 'application/x-www-form-urlencoded',
+        // Enterprise context (with fallbacks)
+        cookies: enterpriseContext.cookies || '',
+        requiredHeaders: enterpriseContext.headers || {},
+        csrfToken: null,
+        formContext: {
+          isModal: safeIsInModal(form),
+          hasFileUpload: false,
+          submitButton: null,
+          isVisible: isFormVisible(form)
+        }
+      };
 
-    // Get all form fields including hidden ones
-    const formInputs = form.querySelectorAll('input, select, textarea');
-    formInputs.forEach(input => {
+      // Get all form fields including hidden ones
+      const formInputs = form.querySelectorAll('input, select, textarea');
+      formInputs.forEach(input => {
       const fieldData = {
         name: input.name || input.id || `field_${formData.fields.length}`,
         type: input.type || 'text',
@@ -246,14 +260,37 @@ const detectPageForms = () => {
       };
     }
 
-    // Detect AJAX form submission
-    formData.formContext.isAjax = hasAjaxSubmission(form);
+      // Detect AJAX form submission
+      formData.formContext.isAjax = safeHasAjaxSubmission(form);
 
-    if (formData.fields.length > 0 || formData.hiddenFields.length > 0) {
-      formsData.push(formData);
+      if (formData.fields.length > 0 || formData.hiddenFields.length > 0) {
+        console.log(`✅ Form ${index + 1} processed: ${formData.fields.length} visible, ${formData.hiddenFields.length} hidden fields`);
+        formsData.push(formData);
+      } else {
+        console.log(`⚠️ Form ${index + 1} skipped: no fields found`);
+      }
+    } catch (error) {
+      console.error(`❌ Error processing form ${index + 1}:`, error);
+      // Still try to add a basic form data structure
+      const basicFormData = {
+        index: index,
+        action: form.action || currentUrl,
+        method: (form.method || 'POST').toUpperCase(),
+        fields: [],
+        hiddenFields: [],
+        url: currentUrl,
+        enctype: 'application/x-www-form-urlencoded',
+        cookies: '',
+        requiredHeaders: {},
+        csrfToken: null,
+        formContext: { isModal: false, hasFileUpload: false, submitButton: null, isVisible: true }
+      };
+      formsData.push(basicFormData);
     }
   });
 
+  console.log(`🎯 Form detection complete: ${formsData.length}/${forms.length} forms processed successfully`);
+  
   return {
     url: currentUrl,
     title: pageTitle,
@@ -333,42 +370,66 @@ const extractEnterpriseContext = () => {
   return context;
 };
 
-// Check if form is inside a modal/popup
-const isInModal = (form) => {
-  const modalSelectors = [
-    '.modal', '.popup', '.dialog', '.overlay',
-    '[role="dialog"]', '[aria-modal="true"]',
-    '.fancybox', '.lightbox', '.ui-dialog'
-  ];
-  
-  for (const selector of modalSelectors) {
-    if (form.closest(selector)) {
-      return true;
+// Safe check if form is inside a modal/popup
+const safeIsInModal = (form) => {
+  try {
+    const modalSelectors = [
+      '.modal', '.popup', '.dialog', '.overlay', '.drawer',
+      '[role="dialog"]', '[aria-modal="true"]',
+      '.fancybox', '.lightbox', '.ui-dialog', '.ant-modal',
+      '.ReactModal__Content', '.MuiDialog-root'
+    ];
+    
+    for (const selector of modalSelectors) {
+      if (form.closest(selector)) {
+        return true;
+      }
     }
+    return false;
+  } catch (e) {
+    console.warn('Modal detection failed:', e);
+    return false;
   }
-  return false;
 };
 
-// Detect if form uses AJAX submission
-const hasAjaxSubmission = (form) => {
-  // Check for common AJAX indicators
-  const hasDataAttributes = form.hasAttribute('data-remote') || 
-                           form.hasAttribute('data-ajax') ||
-                           form.hasAttribute('data-async');
-  
-  // Check for event listeners (basic detection)
-  const hasAjaxClass = form.classList.contains('ajax-form') ||
-                      form.classList.contains('remote-form') ||
-                      form.classList.contains('async-form');
+// Check if form is visible
+const isFormVisible = (form) => {
+  try {
+    const style = window.getComputedStyle(form);
+    return style.display !== 'none' && 
+           style.visibility !== 'hidden' && 
+           style.opacity !== '0' &&
+           form.offsetParent !== null;
+  } catch (e) {
+    return true; // Default to visible if check fails
+  }
+};
 
-  // Check if form action is an API endpoint
-  const actionUrl = form.action || '';
-  const isApiEndpoint = actionUrl.includes('/api/') || 
-                       actionUrl.includes('/ajax/') ||
-                       actionUrl.includes('.json') ||
-                       actionUrl.endsWith('/json');
+// Safe detect if form uses AJAX submission
+const safeHasAjaxSubmission = (form) => {
+  try {
+    // Check for common AJAX indicators
+    const hasDataAttributes = form.hasAttribute('data-remote') || 
+                             form.hasAttribute('data-ajax') ||
+                             form.hasAttribute('data-async');
+    
+    // Check for event listeners (basic detection)
+    const hasAjaxClass = form.classList.contains('ajax-form') ||
+                        form.classList.contains('remote-form') ||
+                        form.classList.contains('async-form');
 
-  return hasDataAttributes || hasAjaxClass || isApiEndpoint;
+    // Check if form action is an API endpoint
+    const actionUrl = form.action || '';
+    const isApiEndpoint = actionUrl.includes('/api/') || 
+                         actionUrl.includes('/ajax/') ||
+                         actionUrl.includes('.json') ||
+                         actionUrl.endsWith('/json');
+
+    return hasDataAttributes || hasAjaxClass || isApiEndpoint;
+  } catch (e) {
+    console.warn('AJAX detection failed:', e);
+    return false;
+  }
 };
 
 // Comprehensive page analysis

@@ -687,19 +687,46 @@ const ModernPostmanRequestBuilder = ({ request, onRequestChange, onSendRequest, 
           )}
         </button>
 
-        {aiSuggestions.length > 0 && (
+        {aiSuggestions.length > 0 ? (
           <div className="ai-suggestions">
+            <div className="suggestions-header">
+              <h5>✅ Found {aiSuggestions.length} Form{aiSuggestions.length !== 1 ? 's' : ''}</h5>
+            </div>
             {aiSuggestions.map((suggestion, index) => (
               <div
                 key={index}
                 className="suggestion-item"
                 onClick={() => applySuggestion(suggestion)}
               >
-                <strong>{suggestion.method}</strong> {suggestion.url}
-                <br />
-                <small>{suggestion.description}</small>
+                <div className="suggestion-main">
+                  <strong className="suggestion-method">{suggestion.method}</strong> 
+                  <span className="suggestion-url">{suggestion.url}</span>
+                </div>
+                <div className="suggestion-details">
+                  <small>{suggestion.description}</small>
+                </div>
+                {suggestion.csrfToken && (
+                  <div className="suggestion-security">
+                    <span className="security-badge">🔐 CSRF Protected</span>
+                  </div>
+                )}
+                {suggestion.hasFileUploads && (
+                  <div className="suggestion-files">
+                    <span className="file-badge">📎 File Upload</span>
+                  </div>
+                )}
+                {suggestion.isAjax && (
+                  <div className="suggestion-ajax">
+                    <span className="ajax-badge">⚡ AJAX Form</span>
+                  </div>
+                )}
               </div>
             ))}
+          </div>
+        ) : !detectingForms && (
+          <div className="no-suggestions">
+            <p>🔍 No forms detected on current page</p>
+            <small>Try navigating to a page with forms or contact forms</small>
           </div>
         )}
       </div>
