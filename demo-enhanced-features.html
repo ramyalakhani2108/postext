@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Enhanced Postman Features Demo</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: #f5f7fa;
+        }
+        .demo-container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+        .demo-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        .demo-header h1 {
+            margin: 0;
+            font-size: 2rem;
+        }
+        .demo-header p {
+            margin: 10px 0 0 0;
+            opacity: 0.9;
+        }
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 30px;
+            padding: 30px;
+        }
+        .feature-card {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 20px;
+            transition: transform 0.2s ease;
+        }
+        .feature-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+        }
+        .feature-title {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 15px;
+            font-size: 1.2rem;
+            font-weight: 600;
+            color: #2d3748;
+        }
+        .feature-icon {
+            width: 24px;
+            height: 24px;
+            fill: #667eea;
+        }
+        .feature-description {
+            color: #4a5568;
+            line-height: 1.6;
+            margin-bottom: 15px;
+        }
+        .feature-demo {
+            background: white;
+            border: 1px solid #e2e8f0;
+            border-radius: 6px;
+            padding: 15px;
+            font-family: 'Monaco', 'Menlo', monospace;
+            font-size: 0.9rem;
+            color: #2d3748;
+        }
+        .highlight {
+            background: #fed7d7;
+            padding: 2px 4px;
+            border-radius: 3px;
+            color: #c53030;
+        }
+        .pro-tip {
+            background: #c6f6d5;
+            border-left: 4px solid #38a169;
+            padding: 10px 15px;
+            margin-top: 15px;
+            border-radius: 0 4px 4px 0;
+        }
+        .pro-tip strong {
+            color: #2f855a;
+        }
+        .keymap {
+            display: inline-block;
+            background: #4a5568;
+            color: white;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-size: 0.8rem;
+            margin: 0 2px;
+        }
+    </style>
+</head>
+<body>
+    <div class="demo-container">
+        <div class="demo-header">
+            <h1>🚀 Enhanced API Request Builder</h1>
+            <p>Professional-grade features inspired by 10+ years of Postman expertise</p>
+        </div>
+        
+        <div class="features-grid">
+            <!-- Bulk Edit Feature -->
+            <div class="feature-card">
+                <div class="feature-title">
+                    <svg class="feature-icon" viewBox="0 0 24 24">
+                        <path d="M3 17.25V21H6.75L17.81 9.94L14.06 6.19L3 17.25ZM20.71 7.04C21.1 6.65 21.1 6.02 20.71 5.63L18.37 3.29C17.98 2.9 17.35 2.9 16.96 3.29L15.13 5.12L18.88 8.87L20.71 7.04Z"/>
+                    </svg>
+                    Bulk Edit (Postman-style)
+                </div>
+                <div class="feature-description">
+                    Edit multiple form data pairs efficiently with our bulk editor. Perfect for handling large forms or making quick edits across multiple parameters.
+                </div>
+                <div class="feature-demo">
+                    <strong>Format:</strong> key:value (one per line)<br><br>
+                    username:john.doe<br>
+                    password:secret123<br>
+                    email:john@example.com<br>
+                    age:25<br>
+                    role:developer
+                </div>
+                <div class="pro-tip">
+                    <strong>Pro Tip:</strong> Use <span class="keymap">Bulk Edit</span> button in form-data sections to quickly import/export form parameters. Supports complex values with colons!
+                </div>
+            </div>
+
+            <!-- Enhanced Form Data -->
+            <div class="feature-card">
+                <div class="feature-title">
+                    <svg class="feature-icon" viewBox="0 0 24 24">
+                        <path d="M9 11H7V9H9V11ZM13 11H11V9H13V11ZM17 11H15V9H17V11ZM19 3H5C3.9 3 3 3.9 3 5V19C3 20.1 3.9 21 5 21H19C20.1 21 21 20.1 21 19V5C21 3.9 20.1 3 19 3ZM19 19H5V8H19V19Z"/>
+                    </svg>
+                    Advanced Form Data
+                </div>
+                <div class="feature-description">
+                    Professional form data handling with support for both text and file uploads. Automatic content-type detection and intelligent form parsing.
+                </div>
+                <div class="feature-demo">
+                    <strong>Supported Types:</strong><br>
+                    • <span class="highlight">Text</span> - Regular form fields<br>
+                    • <span class="highlight">File</span> - File uploads with preview<br>
+                    • <span class="highlight">Auto-detection</span> - Smart type inference<br>
+                    • <span class="highlight">Enable/Disable</span> - Toggle parameters
+                </div>
+                <div class="pro-tip">
+                    <strong>Pro Tip:</strong> Switch between <span class="keymap">form-data</span> and <span class="keymap">x-www-form-urlencoded</span> seamlessly. The extension automatically converts formats!
+                </div>
+            </div>
+
+            <!-- Dark Mode -->
+            <div class="feature-card">
+                <div class="feature-title">
+                    <svg class="feature-icon" viewBox="0 0 24 24">
+                        <path d="M17.75 4.09L15.22 6.03L16.13 9.09L13.5 7.28L10.87 9.09L11.78 6.03L9.25 4.09L12.44 4L13.5 1L14.56 4L17.75 4.09ZM21.25 11L19.61 12.25L20.2 14.23L18.5 13.06L16.8 14.23L17.39 12.25L15.75 11L17.81 10.95L18.5 9L19.19 10.95L21.25 11ZM18.97 15.95C19.8 15.87 20.69 17.05 20.16 17.8C19.84 18.25 19.5 18.67 19.08 19.07C15.17 23 8.84 23 4.94 19.07C1.03 15.17 1.03 8.83 4.94 4.93C5.34 4.53 5.76 4.17 6.21 3.85C6.96 3.32 8.14 4.21 8.06 5.04C7.79 7.9 8.75 10.87 10.95 13.06C13.14 15.26 16.1 16.22 18.97 15.95Z"/>
+                    </svg>
+                    Smart Dark Mode
+                </div>
+                <div class="feature-description">
+                    Eye-friendly dark theme that automatically adapts to your system preferences. Designed for extended coding sessions with optimal contrast ratios.
+                </div>
+                <div class="feature-demo">
+                    <strong>Features:</strong><br>
+                    • <span class="highlight">System sync</span> - Follows OS preference<br>
+                    • <span class="highlight">Manual toggle</span> - Header switch control<br>
+                    • <span class="highlight">Smooth transitions</span> - Animated switching<br>
+                    • <span class="highlight">Accessibility</span> - WCAG compliant contrast
+                </div>
+                <div class="pro-tip">
+                    <strong>Pro Tip:</strong> Dark mode persists across sessions and automatically activates if your system is in dark mode!
+                </div>
+            </div>
+
+            <!-- Modern UX -->
+            <div class="feature-card">
+                <div class="feature-title">
+                    <svg class="feature-icon" viewBox="0 0 24 24">
+                        <path d="M12 2L3.09 8.26L4 21L12 17.5L20 21L20.91 8.26L12 2Z"/>
+                    </svg>
+                    Modern UX Design
+                </div>
+                <div class="feature-description">
+                    Redesigned interface with improved usability, better visual hierarchy, and smoother interactions. Built with 10+ years of UX best practices.
+                </div>
+                <div class="feature-demo">
+                    <strong>Improvements:</strong><br>
+                    • <span class="highlight">Smart tabs</span> - Context-aware navigation<br>
+                    • <span class="highlight">Visual feedback</span> - Hover states & animations<br>
+                    • <span class="highlight">Better spacing</span> - Improved readability<br>
+                    • <span class="highlight">Color coding</span> - HTTP method distinction
+                </div>
+                <div class="pro-tip">
+                    <strong>Pro Tip:</strong> Tab counters show active parameters at a glance. Method colors help distinguish request types quickly!
+                </div>
+            </div>
+
+            <!-- AI-Powered Detection -->
+            <div class="feature-card">
+                <div class="feature-title">
+                    <svg class="feature-icon" viewBox="0 0 24 24">
+                        <path d="M12 2C6.48 2 2 6.48 2 12S6.48 22 12 22 22 17.52 22 12 17.52 2 12 2ZM13 17H11V15H13V17ZM13 13H11V7H13V13Z"/>
+                    </svg>
+                    Intelligent Form Detection
+                </div>
+                <div class="feature-description">
+                    AI-powered form analysis that understands complex web forms, including CSRF protection, file uploads, and AJAX forms. Like having a senior developer's expertise built-in.
+                </div>
+                <div class="feature-demo">
+                    <strong>Detection Capabilities:</strong><br>
+                    • <span class="highlight">CSRF tokens</span> - Security aware<br>
+                    • <span class="highlight">File uploads</span> - Multi-part forms<br>
+                    • <span class="highlight">AJAX forms</span> - Dynamic content<br>
+                    • <span class="highlight">Smart headers</span> - Auto content-type
+                </div>
+                <div class="pro-tip">
+                    <strong>Pro Tip:</strong> The AI learns from form structure, labels, and validation patterns to provide accurate API suggestions!
+                </div>
+            </div>
+
+            <!-- Enhanced Performance -->
+            <div class="feature-card">
+                <div class="feature-title">
+                    <svg class="feature-icon" viewBox="0 0 24 24">
+                        <path d="M12 8L8 12L12 16L16 12L12 8Z"/>
+                    </svg>
+                    Performance Optimized
+                </div>
+                <div class="feature-description">
+                    Built with performance in mind. Efficient rendering, optimized bundle size, and smooth animations even with complex forms and large datasets.
+                </div>
+                <div class="feature-demo">
+                    <strong>Optimizations:</strong><br>
+                    • <span class="highlight">Lazy loading</span> - Components on demand<br>
+                    • <span class="highlight">Debounced inputs</span> - Smooth typing<br>
+                    • <span class="highlight">Memory efficient</span> - Clean state management<br>
+                    • <span class="highlight">Fast switching</span> - Instant tab changes
+                </div>
+                <div class="pro-tip">
+                    <strong>Pro Tip:</strong> The extension handles hundreds of form parameters without performance degradation!
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

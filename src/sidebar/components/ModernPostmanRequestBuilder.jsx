@@ -7,6 +7,12 @@ const ModernPostmanRequestBuilder = ({ request, onRequestChange, onSendRequest, 
   const [aiSuggestions, setAiSuggestions] = useState([]);
   const [detectingForms, setDetectingForms] = useState(false);
   const [formDataPairs, setFormDataPairs] = useState([{ key: '', value: '', type: 'text', enabled: true }]);
+  
+  // New state for advanced features
+  const [darkMode, setDarkMode] = useState(false);
+  const [bulkEditMode, setBulkEditMode] = useState(false);
+  const [bulkEditText, setBulkEditText] = useState('');
+  const [showBulkEditModal, setShowBulkEditModal] = useState(false);
 
   // Initialize empty arrays if not provided
   const params = request.params || [];
@@ -231,7 +237,17 @@ const ModernPostmanRequestBuilder = ({ request, onRequestChange, onSendRequest, 
   // Form data management functions (Postman-like interface)
   const updateFormDataPair = (index, field, value) => {
     const newPairs = [...formDataPairs];
-    newPairs[index] = { ...newPairs[index], [field]: value };
+    
+    // Handle file input specially
+    if (field === 'value' && newPairs[index].type === 'file') {
+      // For file inputs, we get a FileList, take the first file
+      const file = value.target?.files?.[0];
+      if (file) {
+        newPairs[index] = { ...newPairs[index], value: file.name, file: file };
+      }
+    } else {
+      newPairs[index] = { ...newPairs[index], [field]: value };
+    }
     
     // Auto-add new empty row when the last row is filled
     if (index === formDataPairs.length - 1 && newPairs[index].key && newPairs[index].value) {
@@ -307,8 +323,86 @@ const ModernPostmanRequestBuilder = ({ request, onRequestChange, onSendRequest, 
     }
   };
 
+
+
+  // Bulk Edit Functions (Postman-like experience)
+  const openBulkEdit = () => {
+    const pairsText = formDataPairs
+      .filter(pair => pair.enabled)
+      .map(pair => `${pair.key}:${pair.value}`)
+      .join('\n');
+    setBulkEditText(pairsText);
+    setShowBulkEditModal(true);
+  };
+
+  const applyBulkEdit = () => {
+    try {
+      const lines = bulkEditText.split('\n').filter(line => line.trim());
+      const newPairs = lines.map(line => {
+        const [key, ...valueParts] = line.split(':');
+        return {
+          key: key?.trim() || '',
+          value: valueParts.join(':').trim() || '',
+          type: 'text',
+          enabled: true
+        };
+      }).filter(pair => pair.key); // Only include pairs with keys
+
+      // Add an empty pair at the end for new entries
+      newPairs.push({ key: '', value: '', type: 'text', enabled: true });
+      
+      setFormDataPairs(newPairs);
+      setShowBulkEditModal(false);
+      setBulkEditText('');
+    } catch (error) {
+      alert('Invalid format. Please use "key:value" format, one per line.');
+    }
+  };
+
+  // Dark Mode Functions
+  const toggleDarkMode = () => {
+    setDarkMode(!darkMode);
+    document.documentElement.setAttribute('data-theme', darkMode ? 'light' : 'dark');
+  };
+
+  // Initialize dark mode from system preference
+  useEffect(() => {
+    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    setDarkMode(prefersDark);
+    document.documentElement.setAttribute('data-theme', prefersDark ? 'dark' : 'light');
+  }, []);
+
+
+
   return (
-    <div className="postman-request-builder">
+    <div className={`postman-request-builder ${darkMode ? 'dark-mode' : ''}`}>
+      {/* Header with Dark Mode Toggle */}
+      <div className="request-builder-header">
+        <div className="header-title">
+          <svg className="header-icon" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M12 2L3.09 8.26L4 21L12 17.5L20 21L20.91 8.26L12 2Z"/>
+          </svg>
+          <h2>API Request Builder</h2>
+        </div>
+        <div className="header-controls">
+          <button
+            className="dark-mode-toggle"
+            onClick={toggleDarkMode}
+            title={`Switch to ${darkMode ? 'light' : 'dark'} mode`}
+          >
+            {darkMode ? (
+              <svg viewBox="0 0 24 24" fill="currentColor">
+                <path d="M12 18C8.69 18 6 15.31 6 12S8.69 6 12 6 18 8.69 18 12 15.31 18 12 18ZM12 16C14.21 16 16 14.21 16 12S14.21 8 12 8 8 9.79 8 12 9.79 16 12 16ZM12 2L15.39 5.39L22 2V9.39L15.39 5.39L12 2ZM2 12L5.39 8.61L2 2V9.39L8.61 12L2 14.61V22L5.39 15.39L2 12ZM12 22L8.61 18.61L2 22H9.39L12 15.39L14.61 22H22L15.39 18.61L12 22Z"/>
+              </svg>
+            ) : (
+              <svg viewBox="0 0 24 24" fill="currentColor">
+                <path d="M17.75 4.09L15.22 6.03L16.13 9.09L13.5 7.28L10.87 9.09L11.78 6.03L9.25 4.09L12.44 4L13.5 1L14.56 4L17.75 4.09ZM21.25 11L19.61 12.25L20.2 14.23L18.5 13.06L16.8 14.23L17.39 12.25L15.75 11L17.81 10.95L18.5 9L19.19 10.95L21.25 11ZM18.97 15.95C19.8 15.87 20.69 17.05 20.16 17.8C19.84 18.25 19.5 18.67 19.08 19.07C15.17 23 8.84 23 4.94 19.07C1.03 15.17 1.03 8.83 4.94 4.93C5.34 4.53 5.76 4.17 6.21 3.85C6.96 3.32 8.14 4.21 8.06 5.04C7.79 7.9 8.75 10.87 10.95 13.06C13.14 15.26 16.1 16.22 18.97 15.95Z"/>
+              </svg>
+            )}
+          </button>
+        </div>
+      </div>
+
       {/* Smart URL Section */}
       <div className="smart-url-section">
         <div className="url-input-group">
@@ -580,6 +674,18 @@ const ModernPostmanRequestBuilder = ({ request, onRequestChange, onSendRequest, 
                         {bodyType === 'form-data' && <span>Type</span>}
                         <span></span>
                       </div>
+                      <div className="form-data-actions-header">
+                        <button
+                          className="bulk-edit-button"
+                          onClick={openBulkEdit}
+                          title="Bulk Edit (Postman-style)"
+                        >
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M3 17.25V21H6.75L17.81 9.94L14.06 6.19L3 17.25ZM20.71 7.04C21.1 6.65 21.1 6.02 20.71 5.63L18.37 3.29C17.98 2.9 17.35 2.9 16.96 3.29L15.13 5.12L18.88 8.87L20.71 7.04Z"/>
+                          </svg>
+                          Bulk Edit
+                        </button>
+                      </div>
                     </div>
                     <div className="form-data-rows">
                       {formDataPairs.map((pair, index) => (
@@ -593,10 +699,11 @@ const ModernPostmanRequestBuilder = ({ request, onRequestChange, onSendRequest, 
                           />
                           <input
                             type={pair.type === 'file' ? 'file' : 'text'}
-                            placeholder="Value"
+                            placeholder={pair.type === 'file' ? 'Choose file...' : 'Value'}
                             value={pair.type === 'file' ? '' : pair.value}
-                            onChange={(e) => updateFormDataPair(index, 'value', e.target.value)}
+                            onChange={(e) => updateFormDataPair(index, 'value', pair.type === 'file' ? e : e.target.value)}
                             className="form-data-input"
+                            accept={pair.type === 'file' ? '*/*' : undefined}
                           />
                           {bodyType === 'form-data' && (
                             <select
@@ -652,6 +759,53 @@ const ModernPostmanRequestBuilder = ({ request, onRequestChange, onSendRequest, 
           )}
         </div>
       </div>
+
+      {/* Bulk Edit Modal */}
+      {showBulkEditModal && (
+        <div className="bulk-edit-modal-overlay">
+          <div className="bulk-edit-modal">
+            <div className="bulk-edit-header">
+              <h3>Bulk Edit Key-Value Pairs</h3>
+              <button
+                className="modal-close-button"
+                onClick={() => setShowBulkEditModal(false)}
+              >
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M19 6.41L17.59 5L12 10.59L6.41 5L5 6.41L10.59 12L5 17.59L6.41 19L12 13.41L17.59 19L19 17.59L13.41 12L19 6.41Z"/>
+                </svg>
+              </button>
+            </div>
+            <div className="bulk-edit-content">
+              <div className="bulk-edit-instructions">
+                <p>Enter key-value pairs in the format <code>key:value</code>, one per line.</p>
+                <p>Example:</p>
+                <pre>username:john.doe{'\n'}password:secret123{'\n'}email:john@example.com</pre>
+              </div>
+              <textarea
+                className="bulk-edit-textarea"
+                value={bulkEditText}
+                onChange={(e) => setBulkEditText(e.target.value)}
+                placeholder="key1:value1&#10;key2:value2&#10;key3:value3"
+                rows={10}
+              />
+              <div className="bulk-edit-actions">
+                <button
+                  className="bulk-edit-cancel"
+                  onClick={() => setShowBulkEditModal(false)}
+                >
+                  Cancel
+                </button>
+                <button
+                  className="bulk-edit-apply"
+                  onClick={applyBulkEdit}
+                >
+                  Apply Changes
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* AI Detection Panel */}
       <div className="ai-panel">
