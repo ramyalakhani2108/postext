@@ -19,9 +19,33 @@ const ModernPostmanRequestBuilder = ({ request, onRequestChange, onSendRequest, 
   const [isResizing, setIsResizing] = useState(false);
   const [aiPanelCollapsed, setAiPanelCollapsed] = useState(false);
 
-  // Initialize empty arrays if not provided
+  // Initialize empty arrays if not provided, handle both array and object formats
   const params = request.params || [];
-  const headers = request.headers || [];
+  const headers = Array.isArray(request.headers) 
+    ? request.headers 
+    : request.headers 
+      ? Object.entries(request.headers).map(([key, value]) => ({ key, value, enabled: true }))
+      : [];
+
+  // Sync formDataPairs with request.formData when request changes
+  useEffect(() => {
+    if (request.formData && request.formData.length > 0) {
+      // Restore form data from request
+      const restoredPairs = [...request.formData];
+      // Always ensure there's an empty pair at the end for adding new entries
+      if (restoredPairs.length === 0 || restoredPairs[restoredPairs.length - 1].key !== '') {
+        restoredPairs.push({ key: '', value: '', type: 'text', enabled: true });
+      }
+      setFormDataPairs(restoredPairs);
+    }
+  }, [request.formData]);
+
+  // Sync bodyType with request
+  useEffect(() => {
+    if (request.bodyType) {
+      setBodyType(request.bodyType);
+    }
+  }, [request.bodyType]);
 
   useEffect(() => {
     // Parse URL parameters when URL changes
@@ -60,13 +84,24 @@ const ModernPostmanRequestBuilder = ({ request, onRequestChange, onSendRequest, 
       finalUrl = url.toString();
     }
 
+    // Prepare headers array for background script
+    const headersForRequest = Array.isArray(headers) 
+      ? headers.filter(h => h.enabled && h.key).reduce((acc, header) => {
+          acc[header.key] = header.value;
+          return acc;
+        }, {})
+      : headers || {};
+
     const requestData = {
       ...request,
       url: finalUrl,
-      headers: headers.filter(h => h.enabled && h.key),
-      params: params.filter(p => p.enabled && p.key)
+      headers: headersForRequest,
+      params: params.filter(p => p.enabled && p.key),
+      formData: formDataPairs?.filter(pair => pair.enabled && pair.key) || [],
+      bodyType: bodyType
     };
 
+    console.log('Sending request with data:', requestData);
     onSendRequest(requestData);
   };
 
@@ -90,20 +125,41 @@ const ModernPostmanRequestBuilder = ({ request, onRequestChange, onSendRequest, 
 
   // Header management
   const addHeader = () => {
+    const currentHeaders = Array.isArray(headers) ? headers : [];
     updateRequest({ 
-      headers: [...headers, { key: '', value: '', enabled: true }] 
+      headers: [...currentHeaders, { key: '', value: '', enabled: true }] 
     });
   };
 
   const updateHeader = (index, field, value) => {
-    const newHeaders = [...headers];
+    const currentHeaders = Array.isArray(headers) ? headers : [];
+    const newHeaders = [...currentHeaders];
     newHeaders[index] = { ...newHeaders[index], [field]: value };
     updateRequest({ headers: newHeaders });
   };
 
   const removeHeader = (index) => {
-    const newHeaders = headers.filter((_, i) => i !== index);
+    const currentHeaders = Array.isArray(headers) ? headers : [];
+    const newHeaders = currentHeaders.filter((_, i) => i !== index);
     updateRequest({ headers: newHeaders });
+  };
+
+  // Reset/Clear functionality
+  const handleResetRequest = () => {
+    if (window.confirm('Are you sure you want to clear all request data? This action cannot be undone.')) {
+      setFormDataPairs([{ key: '', value: '', type: 'text', enabled: true }]);
+      updateRequest({
+        method: 'GET',
+        url: '',
+        headers: [],
+        body: '',
+        params: [],
+        formData: [],
+        bodyType: 'json'
+      });
+      setBodyType('json');
+      setActiveTab('params');
+    }
   };
 
   // AI Form Detection
@@ -248,14 +304,21 @@ const ModernPostmanRequestBuilder = ({ request, onRequestChange, onSendRequest, 
       // For file inputs, we get a FileList, take the first file
       const file = value.target?.files?.[0];
       if (file) {
-        newPairs[index] = { ...newPairs[index], value: file.name, file: file };
+        newPairs[index] = { 
+          ...newPairs[index], 
+          value: file.name, 
+          file: file,
+          fileName: file.name,
+          fileSize: file.size,
+          fileType: file.type
+        };
       }
     } else {
       newPairs[index] = { ...newPairs[index], [field]: value };
     }
     
     // Auto-add new empty row when the last row is filled
-    if (index === formDataPairs.length - 1 && newPairs[index].key && newPairs[index].value) {
+    if (index === formDataPairs.length - 1 && newPairs[index].key && (newPairs[index].value || newPairs[index].file)) {
       newPairs.push({ key: '', value: '', type: 'text', enabled: true });
     }
     
@@ -282,12 +345,17 @@ const ModernPostmanRequestBuilder = ({ request, onRequestChange, onSendRequest, 
     if (bodyType === 'x-www-form-urlencoded') {
       const urlencoded = new URLSearchParams();
       enabledPairs.forEach(pair => {
-        if (pair.key) urlencoded.append(pair.key, pair.value);
+        if (pair.key) urlencoded.append(pair.key, pair.value || '');
       });
-      updateRequest({ body: urlencoded.toString() });
+      updateRequest({ 
+        body: urlencoded.toString(),
+        formData: enabledPairs,
+        bodyType: 'x-www-form-urlencoded'
+      });
       
       // Update or add Content-Type header
-      const headers = [...(request.headers || [])];
+      const currentHeaders = Array.isArray(request.headers) ? request.headers : [];
+      const headers = [...currentHeaders];
       const contentTypeIndex = headers.findIndex(h => h.key?.toLowerCase() === 'content-type');
       
       if (contentTypeIndex >= 0) {
@@ -298,24 +366,37 @@ const ModernPostmanRequestBuilder = ({ request, onRequestChange, onSendRequest, 
       
       updateRequest({ headers });
     } else if (bodyType === 'form-data') {
-      // For form-data, we'll store as JSON representation since we can't create actual FormData in textarea
+      // For form-data, store the pairs directly for background script processing
+      // Also create a display version for the textarea
       const formDataObj = {};
       enabledPairs.forEach(pair => {
-        if (pair.key) formDataObj[pair.key] = { value: pair.value, type: pair.type };
+        if (pair.key) {
+          if (pair.type === 'file') {
+            formDataObj[pair.key] = { 
+              value: pair.value || '[File selected]', 
+              type: 'file',
+              fileName: pair.file?.name || pair.value
+            };
+          } else {
+            formDataObj[pair.key] = { 
+              value: pair.value || '', 
+              type: 'text' 
+            };
+          }
+        }
       });
-      updateRequest({ body: JSON.stringify(formDataObj, null, 2) });
       
-      // Update or add Content-Type header for multipart/form-data
-      const headers = [...(request.headers || [])];
-      const contentTypeIndex = headers.findIndex(h => h.key?.toLowerCase() === 'content-type');
+      updateRequest({ 
+        body: JSON.stringify(formDataObj, null, 2),
+        formData: enabledPairs,
+        bodyType: 'form-data'
+      });
       
-      if (contentTypeIndex >= 0) {
-        headers[contentTypeIndex] = { key: 'Content-Type', value: 'multipart/form-data', enabled: true };
-      } else {
-        headers.push({ key: 'Content-Type', value: 'multipart/form-data', enabled: true });
-      }
+      // Remove Content-Type header for multipart/form-data - browser will set boundary
+      const currentHeaders = Array.isArray(request.headers) ? request.headers : [];
+      const filteredHeaders = currentHeaders.filter(h => h.key?.toLowerCase() !== 'content-type');
       
-      updateRequest({ headers });
+      updateRequest({ headers: filteredHeaders });
     }
   };
 
@@ -509,25 +590,39 @@ const ModernPostmanRequestBuilder = ({ request, onRequestChange, onSendRequest, 
             onChange={(e) => updateRequest({ url: e.target.value })}
           />
 
-          <button
-            className="send-button"
-            onClick={handleSend}
-            disabled={loading || !request.url}
-          >
-            {loading ? (
-              <>
-                <div className="button-icon loading-spinner"></div>
-                Sending
-              </>
-            ) : (
-              <>
-                <svg className="button-icon" viewBox="0 0 24 24" fill="currentColor">
-                  <path d="M2 21L23 12L2 3V10L17 12L2 14V21Z"/>
-                </svg>
-                Send
-              </>
-            )}
-          </button>
+          <div className="button-group">
+            <button
+              className="reset-button"
+              onClick={handleResetRequest}
+              disabled={loading}
+              title="Clear all request data"
+            >
+              <svg className="button-icon" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M19 6.41L17.59 5L12 10.59L6.41 5L5 6.41L10.59 12L5 17.59L6.41 19L12 13.41L17.59 19L19 17.59L13.41 12L19 6.41Z"/>
+              </svg>
+              Clear
+            </button>
+            
+            <button
+              className="send-button"
+              onClick={handleSend}
+              disabled={loading || !request.url}
+            >
+              {loading ? (
+                <>
+                  <div className="button-icon loading-spinner"></div>
+                  Sending
+                </>
+              ) : (
+                <>
+                  <svg className="button-icon" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M2 21L23 12L2 3V10L17 12L2 14V21Z"/>
+                  </svg>
+                  Send
+                </>
+              )}
+            </button>
+          </div>
         </div>
       </div>
 
@@ -569,7 +664,7 @@ const ModernPostmanRequestBuilder = ({ request, onRequestChange, onSendRequest, 
               </svg>
             </div>
             <span>Headers</span>
-            {headers.length > 0 && (
+            {Array.isArray(headers) && headers.length > 0 && (
               <div className="tab-counter">{headers.length}</div>
             )}
           </button>
@@ -601,6 +696,18 @@ const ModernPostmanRequestBuilder = ({ request, onRequestChange, onSendRequest, 
                   </svg>
                   Query Parameters
                 </h3>
+                {params.length > 0 && (
+                  <button
+                    className="section-clear-button"
+                    onClick={() => updateRequest({ params: [] })}
+                    title="Clear all parameters"
+                  >
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+                      <path d="M19 6.41L17.59 5L12 10.59L6.41 5L5 6.41L10.59 12L5 17.59L6.41 19L12 13.41L17.59 19L19 17.59L13.41 12L19 6.41Z"/>
+                    </svg>
+                    Clear All
+                  </button>
+                )}
               </div>
 
               {params.length > 0 && (
@@ -654,9 +761,21 @@ const ModernPostmanRequestBuilder = ({ request, onRequestChange, onSendRequest, 
                   </svg>
                   Request Headers
                 </h3>
+                {Array.isArray(headers) && headers.length > 0 && (
+                  <button
+                    className="section-clear-button"
+                    onClick={() => updateRequest({ headers: [] })}
+                    title="Clear all headers"
+                  >
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+                      <path d="M19 6.41L17.59 5L12 10.59L6.41 5L5 6.41L10.59 12L5 17.59L6.41 19L12 13.41L17.59 19L19 17.59L13.41 12L19 6.41Z"/>
+                    </svg>
+                    Clear All
+                  </button>
+                )}
               </div>
 
-              {headers.length > 0 && (
+              {Array.isArray(headers) && headers.length > 0 && (
                 <div className="smart-kv-list">
                   {headers.map((header, index) => (
                     <div key={index} className="smart-kv-item">
@@ -768,6 +887,21 @@ const ModernPostmanRequestBuilder = ({ request, onRequestChange, onSendRequest, 
                         <span></span>
                       </div>
                       <div className="form-data-actions-header">
+                        {formDataPairs.some(pair => pair.key) && (
+                          <button
+                            className="section-clear-button"
+                            onClick={() => {
+                              setFormDataPairs([{ key: '', value: '', type: 'text', enabled: true }]);
+                              updateRequest({ formData: [], body: '' });
+                            }}
+                            title="Clear all form data"
+                          >
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+                              <path d="M19 6.41L17.59 5L12 10.59L6.41 5L5 6.41L10.59 12L5 17.59L6.41 19L12 13.41L17.59 19L19 17.59L13.41 12L19 6.41Z"/>
+                            </svg>
+                            Clear All
+                          </button>
+                        )}
                         <button
                           className="bulk-edit-button"
                           onClick={openBulkEdit}
@@ -790,14 +924,33 @@ const ModernPostmanRequestBuilder = ({ request, onRequestChange, onSendRequest, 
                             onChange={(e) => updateFormDataPair(index, 'key', e.target.value)}
                             className="form-data-input"
                           />
-                          <input
-                            type={pair.type === 'file' ? 'file' : 'text'}
-                            placeholder={pair.type === 'file' ? 'Choose file...' : 'Value'}
-                            value={pair.type === 'file' ? '' : pair.value}
-                            onChange={(e) => updateFormDataPair(index, 'value', pair.type === 'file' ? e : e.target.value)}
-                            className="form-data-input"
-                            accept={pair.type === 'file' ? '*/*' : undefined}
-                          />
+                          {pair.type === 'file' ? (
+                            <div className="file-input-container">
+                              <input
+                                type="file"
+                                onChange={(e) => updateFormDataPair(index, 'value', e)}
+                                className="form-data-file-input"
+                                accept="*/*"
+                                id={`file-${index}`}
+                              />
+                              <label htmlFor={`file-${index}`} className="file-input-label">
+                                {pair.value || 'Choose file...'}
+                              </label>
+                              {pair.file && (
+                                <small className="file-info">
+                                  {Math.round(pair.fileSize / 1024)}KB - {pair.fileType}
+                                </small>
+                              )}
+                            </div>
+                          ) : (
+                            <input
+                              type="text"
+                              placeholder="Value"
+                              value={pair.value}
+                              onChange={(e) => updateFormDataPair(index, 'value', e.target.value)}
+                              className="form-data-input"
+                            />
+                          )}
                           {bodyType === 'form-data' && (
                             <select
                               value={pair.type}

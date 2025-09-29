@@ -50,7 +50,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 // Function to handle HTTP requests
 async function handleHttpRequest(requestData, apiKey = null) {
   try {
-    const { method, url, headers, body, timeout = 30000 } = requestData;
+    const { method, url, headers, body, timeout = 30000, formData, bodyType } = requestData;
     
     // If this is an OpenAI API request, ensure we have proper authorization
     const finalHeaders = { ...headers };
@@ -72,9 +72,43 @@ async function handleHttpRequest(requestData, apiKey = null) {
       signal: controller.signal
     };
     
-    // Add body for methods that support it
-    if (body && ['POST', 'PUT', 'PATCH'].includes(method.toUpperCase())) {
-      fetchOptions.body = body;
+    // Handle different body types for methods that support it
+    if (['POST', 'PUT', 'PATCH'].includes(method.toUpperCase())) {
+      if (bodyType === 'form-data' && formData) {
+        // Create actual FormData object from formData pairs
+        const formDataObj = new FormData();
+        formData.forEach(pair => {
+          if (pair.enabled && pair.key) {
+            if (pair.type === 'file' && pair.file) {
+              formDataObj.append(pair.key, pair.file);
+            } else {
+              formDataObj.append(pair.key, pair.value || '');
+            }
+          }
+        });
+        fetchOptions.body = formDataObj;
+        
+        // Remove Content-Type header for multipart/form-data - browser sets boundary automatically
+        delete finalHeaders['Content-Type'];
+        delete finalHeaders['content-type'];
+        
+      } else if (bodyType === 'x-www-form-urlencoded' && formData) {
+        // Create URL-encoded string from formData pairs
+        const urlencoded = new URLSearchParams();
+        formData.forEach(pair => {
+          if (pair.enabled && pair.key) {
+            urlencoded.append(pair.key, pair.value || '');
+          }
+        });
+        fetchOptions.body = urlencoded.toString();
+        
+        // Ensure correct Content-Type for URL-encoded data
+        finalHeaders['Content-Type'] = 'application/x-www-form-urlencoded';
+        
+      } else if (body) {
+        // Handle JSON, raw text, or other body types
+        fetchOptions.body = body;
+      }
     }
     
     const response = await fetch(url, fetchOptions);
