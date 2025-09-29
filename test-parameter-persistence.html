@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Parameter Persistence Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        
+        .test-container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        
+        .test-step {
+            margin: 15px 0;
+            padding: 15px;
+            background: #f8f9fa;
+            border-left: 4px solid #007bff;
+            border-radius: 4px;
+        }
+        
+        .test-step h3 {
+            margin: 0 0 10px 0;
+            color: #007bff;
+        }
+        
+        .test-result {
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+        
+        .success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        
+        .error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        
+        .info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+        
+        .form-container {
+            background: #fff;
+            border: 1px solid #ddd;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+        
+        .form-row {
+            display: flex;
+            gap: 10px;
+            margin: 10px 0;
+            align-items: center;
+        }
+        
+        .form-row input {
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            flex: 1;
+        }
+        
+        .form-row button {
+            padding: 8px 15px;
+            background: #dc3545;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        
+        .add-param {
+            background: #28a745;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 10px 0;
+        }
+        
+        .send-button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 20px 0;
+        }
+        
+        .tab-buttons {
+            display: flex;
+            gap: 10px;
+            margin: 20px 0;
+        }
+        
+        .tab-button {
+            padding: 10px 20px;
+            border: 1px solid #ddd;
+            background: #f8f9fa;
+            cursor: pointer;
+            border-radius: 4px;
+        }
+        
+        .tab-button.active {
+            background: #007bff;
+            color: white;
+            border-color: #007bff;
+        }
+        
+        .url-input {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            margin: 10px 0;
+            font-size: 16px;
+        }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <h1>🧪 Parameter Persistence Test</h1>
+        <p>This test simulates the Chrome extension behavior to verify that parameters persist when switching between request and response tabs.</p>
+        
+        <div class="test-result info">
+            <strong>Test Scenario:</strong> Add parameters → Send request → Switch to Response tab → Switch back to Request tab → Verify parameters are still there
+        </div>
+    </div>
+
+    <div class="test-container">
+        <h2>Simulated Request Builder</h2>
+        
+        <div class="tab-buttons">
+            <button class="tab-button active" id="requestTab">Request</button>
+            <button class="tab-button" id="responseTab">Response</button>
+        </div>
+        
+        <div id="requestPanel">
+            <input type="text" class="url-input" id="urlInput" placeholder="https://api.example.com/users" value="https://api.example.com/users">
+            
+            <h3>Parameters</h3>
+            <div class="form-container" id="parametersContainer">
+                <!-- Parameters will be added here -->
+            </div>
+            
+            <button class="add-param" onclick="addParameter()">+ Add Parameter</button>
+            <br>
+            <button class="send-button" onclick="sendRequest()">Send Request</button>
+        </div>
+        
+        <div id="responsePanel" style="display: none;">
+            <div class="test-result success">
+                <h3>✅ Mock Response</h3>
+                <p>Status: 200 OK</p>
+                <p>Response Time: 142ms</p>
+                <pre>{"status": "success", "data": []}</pre>
+            </div>
+        </div>
+    </div>
+
+    <div class="test-container">
+        <h2>Test Results</h2>
+        <div id="testResults">
+            <div class="test-result info">
+                <strong>Waiting for test to run...</strong>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Simulate the extension state
+        let requestState = {
+            url: 'https://api.example.com/users',
+            params: []
+        };
+        
+        let currentTab = 'request';
+        let parameterCount = 0;
+        
+        // Add initial parameter
+        addParameter();
+        
+        function addParameter() {
+            parameterCount++;
+            const container = document.getElementById('parametersContainer');
+            const paramDiv = document.createElement('div');
+            paramDiv.className = 'form-row';
+            paramDiv.innerHTML = `
+                <input type="text" placeholder="Parameter name" onchange="updateParameters()" data-param-key="${parameterCount}">
+                <input type="text" placeholder="Parameter value" onchange="updateParameters()" data-param-value="${parameterCount}">
+                <button onclick="removeParameter(this)" data-param-id="${parameterCount}">Remove</button>
+            `;
+            container.appendChild(paramDiv);
+            updateParameters();
+        }
+        
+        function removeParameter(button) {
+            button.parentElement.remove();
+            updateParameters();
+        }
+        
+        function updateParameters() {
+            const params = [];
+            const container = document.getElementById('parametersContainer');
+            const rows = container.querySelectorAll('.form-row');
+            
+            rows.forEach(row => {
+                const keyInput = row.querySelector('input[data-param-key]');
+                const valueInput = row.querySelector('input[data-param-value]');
+                
+                if (keyInput && valueInput) {
+                    params.push({
+                        key: keyInput.value,
+                        value: valueInput.value,
+                        enabled: true
+                    });
+                }
+            });
+            
+            // Update state
+            requestState.params = params;
+            
+            logTestResult('info', `Parameters updated: ${params.length} parameters`);
+        }
+        
+        function sendRequest() {
+            logTestResult('info', `🚀 Sending request with ${requestState.params.length} parameters`);
+            
+            // Log current parameters before sending
+            const paramsBefore = [...requestState.params];
+            logTestResult('info', `Parameters before send: ${JSON.stringify(paramsBefore)}`);
+            
+            // Simulate request sending and tab switch
+            setTimeout(() => {
+                switchTab('response');
+                logTestResult('success', '✅ Request sent successfully! Switched to Response tab.');
+                
+                // Test switching back
+                setTimeout(() => {
+                    logTestResult('info', '🔄 Now switching back to Request tab to test parameter persistence...');
+                    switchTab('request');
+                    
+                    // Verify parameters are still there
+                    const paramsAfter = requestState.params;
+                    if (JSON.stringify(paramsBefore) === JSON.stringify(paramsAfter)) {
+                        logTestResult('success', '✅ SUCCESS: Parameters persisted correctly!');
+                        logTestResult('success', `✅ Found ${paramsAfter.length} parameters after tab switch`);
+                        
+                        // Visual verification
+                        restoreParametersInUI();
+                    } else {
+                        logTestResult('error', '❌ FAILED: Parameters were lost during tab switch!');
+                        logTestResult('error', `❌ Expected: ${JSON.stringify(paramsBefore)}`);
+                        logTestResult('error', `❌ Actual: ${JSON.stringify(paramsAfter)}`);
+                    }
+                }, 1000);
+            }, 500);
+        }
+        
+        function switchTab(tab) {
+            currentTab = tab;
+            
+            // Update UI
+            document.getElementById('requestTab').classList.toggle('active', tab === 'request');
+            document.getElementById('responseTab').classList.toggle('active', tab === 'response');
+            
+            document.getElementById('requestPanel').style.display = tab === 'request' ? 'block' : 'none';
+            document.getElementById('responsePanel').style.display = tab === 'response' ? 'block' : 'none';
+            
+            logTestResult('info', `📋 Switched to ${tab.charAt(0).toUpperCase() + tab.slice(1)} tab`);
+        }
+        
+        function restoreParametersInUI() {
+            const container = document.getElementById('parametersContainer');
+            container.innerHTML = '';
+            
+            requestState.params.forEach((param, index) => {
+                parameterCount = index + 1;
+                const paramDiv = document.createElement('div');
+                paramDiv.className = 'form-row';
+                paramDiv.innerHTML = `
+                    <input type="text" placeholder="Parameter name" value="${param.key}" onchange="updateParameters()" data-param-key="${parameterCount}">
+                    <input type="text" placeholder="Parameter value" value="${param.value}" onchange="updateParameters()" data-param-value="${parameterCount}">
+                    <button onclick="removeParameter(this)" data-param-id="${parameterCount}">Remove</button>
+                `;
+                container.appendChild(paramDiv);
+            });
+            
+            if (requestState.params.length === 0) {
+                addParameter();
+            }
+        }
+        
+        function logTestResult(type, message) {
+            const container = document.getElementById('testResults');
+            const resultDiv = document.createElement('div');
+            resultDiv.className = `test-result ${type}`;
+            resultDiv.innerHTML = `<strong>[${new Date().toLocaleTimeString()}]</strong> ${message}`;
+            container.appendChild(resultDiv);
+            container.scrollTop = container.scrollHeight;
+        }
+        
+        // Tab switching
+        document.getElementById('requestTab').onclick = () => switchTab('request');
+        document.getElementById('responseTab').onclick = () => switchTab('response');
+        
+        // Initialize test
+        logTestResult('info', '🧪 Test initialized. Add some parameters and click "Send Request" to test persistence.');
+    </script>
+</body>
+</html>

@@ -20,7 +20,8 @@ const ModernPostmanRequestBuilder = ({ request, onRequestChange, onSendRequest, 
   const [aiPanelCollapsed, setAiPanelCollapsed] = useState(false);
 
   // Initialize empty arrays if not provided, handle both array and object formats
-  const params = request.params || [];
+  // Ensure params always returns an array and preserves the original structure
+  const params = Array.isArray(request.params) ? request.params : [];
   const headers = Array.isArray(request.headers) 
     ? request.headers 
     : request.headers 
@@ -48,8 +49,9 @@ const ModernPostmanRequestBuilder = ({ request, onRequestChange, onSendRequest, 
   }, [request.bodyType]);
 
   useEffect(() => {
-    // Parse URL parameters when URL changes
-    if (request.url) {
+    // Parse URL parameters when URL changes, but only if we don't already have parameters
+    // This prevents clearing manually added parameters when switching tabs
+    if (request.url && (!request.params || request.params.length === 0)) {
       try {
         const url = new URL(request.url);
         const urlParams = Array.from(url.searchParams.entries()).map(([key, value]) => ({
@@ -58,7 +60,7 @@ const ModernPostmanRequestBuilder = ({ request, onRequestChange, onSendRequest, 
           enabled: true
         }));
         
-        if (urlParams.length > 0 && params.length === 0) {
+        if (urlParams.length > 0) {
           updateRequest({ params: urlParams });
         }
       } catch (e) {
@@ -100,6 +102,13 @@ const ModernPostmanRequestBuilder = ({ request, onRequestChange, onSendRequest, 
       formData: formDataPairs?.filter(pair => pair.enabled && pair.key) || [],
       bodyType: bodyType
     };
+
+    // Update the current request state to preserve parameters for when user returns to request tab
+    updateRequest({ 
+      params: params, // Keep all params, not just enabled ones
+      formData: formDataPairs,
+      bodyType: bodyType
+    });
 
     console.log('Sending request with data:', requestData);
     onSendRequest(requestData);

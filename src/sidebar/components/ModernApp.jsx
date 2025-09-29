@@ -49,6 +49,14 @@ const App = () => {
     setLoading(true);
     setResponse(null);
     
+    // Update current request to preserve parameters when switching back to request tab
+    setCurrentRequest(prev => ({
+      ...prev,
+      ...requestData,
+      // Preserve the original URL without query parameters for the UI
+      url: prev.url
+    }));
+    
     try {
       const startTime = performance.now();
 
