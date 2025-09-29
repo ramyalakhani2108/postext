@@ -104,11 +104,13 @@ const App = () => {
 
   const handleLoadRequest = (request) => {
     setCurrentRequest({
-      method: request.method,
-      url: request.url,
-      headers: request.headers,
-      body: request.body,
-      params: request.params
+      method: request.method || 'GET',
+      url: request.url || '',
+      headers: Array.isArray(request.headers) ? request.headers : (request.headers ? Object.entries(request.headers).map(([key, value]) => ({ key, value, enabled: true })) : []),
+      body: request.body || '',
+      params: Array.isArray(request.params) ? request.params : [],
+      formData: Array.isArray(request.formData) ? request.formData : [],
+      bodyType: request.bodyType || 'json'
     });
     setActiveTab('request');
   };
@@ -242,6 +244,7 @@ const App = () => {
                   setRequests([]);
                   saveToStorage('requests', []);
                 }}
+                settings={settings}
               />
             </div>
           )}
