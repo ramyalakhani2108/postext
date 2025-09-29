@@ -26,81 +26,412 @@ const HistoryPanel = ({ requests, onLoadRequest, onClearHistory, settings }) => 
   const methods = ['ALL', 'GET', 'POST', 'PUT', 'DELETE', 'PATCH'];
 
   const generateDocumentation = async (request) => {
-    if (!settings?.openaiApiKey) {
-      alert('Please configure your OpenAI API key in Settings to generate documentation.');
-      return;
-    }
-
     try {
-      // Generate documentation using OpenAI
-      const documentation = await generateAPIDocumentation(request, settings.openaiApiKey);
+      // Generate documentation locally without external API calls
+      const documentation = await generateAPIDocumentation(request);
       
       // Create and download the file
       downloadDocumentation(documentation, request);
     } catch (error) {
       console.error('Failed to generate documentation:', error);
-      alert('Failed to generate documentation. Please check your OpenAI API key and try again.');
+      alert('Failed to generate documentation. Please try again.');
     }
   };
 
-  const generateAPIDocumentation = async (request, apiKey) => {
-    const prompt = `Generate comprehensive API documentation for the following HTTP request. Make it professional and detailed:
+  const generateAPIDocumentation = async (request) => {
+    // Generate professional documentation locally without external API calls
+    return generateLocalAPIDocumentation(request);
+  };
 
-**Request Details:**
-- Method: ${request.method}
-- URL: ${request.url}
-- Headers: ${JSON.stringify(request.headers || {}, null, 2)}
-- Parameters: ${JSON.stringify(request.params || [], null, 2)}
-- Body: ${request.body || 'None'}
-- Form Data: ${JSON.stringify(request.formData || [], null, 2)}
-
-**Response Details:**
-- Status: ${request.response?.status || 'N/A'}
-- Response Time: ${request.response?.responseTime || 'N/A'}ms
-- Response Data: ${JSON.stringify(request.response?.data || {}, null, 2)}
-
-Please create documentation that includes:
-1. API Endpoint Overview
-2. Request Format
-3. Parameters Description
-4. Headers Description
-5. Request Body/Payload
-6. Response Format
-7. Example Usage
-8. Error Handling
-9. Notes and Best Practices
-
-Format it as clean, readable documentation that could be used by developers.`;
-
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKey}`
-      },
-      body: JSON.stringify({
-        model: 'gpt-3.5-turbo',
-        messages: [
-          {
-            role: 'system',
-            content: 'You are a technical documentation expert. Generate clear, comprehensive API documentation.'
-          },
-          {
-            role: 'user',
-            content: prompt
-          }
-        ],
-        max_tokens: 2000,
-        temperature: 0.3
-      })
-    });
-
-    if (!response.ok) {
-      throw new Error(`OpenAI API error: ${response.status}`);
+  const generateLocalAPIDocumentation = (requestData) => {
+    const { method, url, headers, params, body, formData, bodyType, response } = requestData;
+    
+    // Parse URL to get useful information
+    let urlInfo;
+    try {
+      urlInfo = new URL(url);
+    } catch (e) {
+      urlInfo = { hostname: 'unknown', pathname: url, search: '' };
     }
 
-    const data = await response.json();
-    return data.choices[0].message.content;
+    const endpointName = urlInfo.pathname.split('/').pop() || 'endpoint';
+    const serviceName = urlInfo.hostname.replace('api.', '').replace('.com', '').replace('.org', '').replace('.net', '');
+
+    const documentation = `# ${method} ${endpointName} API Documentation
+
+## Endpoint Overview
+- **URL**: \`${url}\`
+- **Method**: \`${method}\`
+- **Service**: ${serviceName}
+- **Content Type**: ${getContentTypeFromHeaders(headers) || getContentTypeFromBodyType(bodyType)}
+- **Last Tested**: ${requestData.timestamp ? new Date(requestData.timestamp).toLocaleString() : 'Unknown'}
+
+## Description
+${generateEndpointDescription(method, endpointName, url)}
+
+## Request Format
+
+### URL Structure
+\`\`\`
+${method} ${url}
+\`\`\`
+
+### Headers
+${generateHeadersDocumentation(headers)}
+
+### Query Parameters
+${generateParametersDocumentation(params)}
+
+### Request Body
+${generateBodyDocumentation(body, formData, bodyType)}
+
+## Response Information
+${generateActualResponseDocumentation(response)}
+
+## Code Examples
+
+### cURL
+\`\`\`bash
+${generateCurlExample(requestData)}
+\`\`\`
+
+### JavaScript (Fetch API)
+\`\`\`javascript
+${generateJavaScriptExample(requestData)}
+\`\`\`
+
+### Python (Requests)
+\`\`\`python
+${generatePythonExample(requestData)}
+\`\`\`
+
+## Error Handling
+${generateErrorHandlingDocumentation()}
+
+## Best Practices
+${generateBestPractices(method, bodyType)}
+
+## Notes
+- Generated automatically by PostExt Chrome Extension from actual request history
+- This documentation is based on a real request that was executed
+- Response data and timing information included where available
+- Test this endpoint with different parameters to understand the full response structure
+`;
+
+    return documentation;
+  };
+
+  // Helper functions for documentation generation
+  const getContentTypeFromHeaders = (headers) => {
+    if (!headers) return null;
+    if (Array.isArray(headers)) {
+      const contentTypeHeader = headers.find(h => h.key?.toLowerCase() === 'content-type');
+      return contentTypeHeader?.value;
+    } else if (typeof headers === 'object') {
+      return headers['Content-Type'] || headers['content-type'];
+    }
+    return null;
+  };
+
+  const getContentTypeFromBodyType = (bodyType) => {
+    switch (bodyType) {
+      case 'json': return 'application/json';
+      case 'form-data': return 'multipart/form-data';
+      case 'x-www-form-urlencoded': return 'application/x-www-form-urlencoded';
+      case 'raw': return 'text/plain';
+      default: return 'application/json';
+    }
+  };
+
+  const generateEndpointDescription = (method, endpointName, url) => {
+    const methodDescriptions = {
+      GET: `Retrieves ${endpointName} data from the server. This is a read-only operation that fetches information without modifying any resources.`,
+      POST: `Creates new ${endpointName} data on the server. This operation will add a new resource and typically returns the created object.`,
+      PUT: `Updates existing ${endpointName} data on the server. This operation replaces the entire resource with the provided data.`,
+      PATCH: `Partially updates existing ${endpointName} data on the server. This operation modifies only the specified fields.`,
+      DELETE: `Removes ${endpointName} data from the server. This is a destructive operation that permanently deletes the resource.`
+    };
+
+    return methodDescriptions[method] || `Performs ${method} operation on ${endpointName} endpoint.`;
+  };
+
+  const generateHeadersDocumentation = (headers) => {
+    if (!headers) {
+      return `No custom headers were used in this request.`;
+    }
+
+    let headerArray = [];
+    if (Array.isArray(headers)) {
+      headerArray = headers;
+    } else if (typeof headers === 'object') {
+      headerArray = Object.entries(headers).map(([key, value]) => ({ key, value, enabled: true }));
+    }
+
+    if (headerArray.length === 0) {
+      return `No custom headers were used in this request.`;
+    }
+
+    let table = `| Header | Value | Description |
+|--------|-------|-------------|
+`;
+
+    headerArray.forEach(header => {
+      if (header.key) {
+        const description = getHeaderDescription(header.key);
+        table += `| ${header.key} | ${header.value || '[value]'} | ${description} |
+`;
+      }
+    });
+
+    return table;
+  };
+
+  const getHeaderDescription = (headerName) => {
+    const descriptions = {
+      'content-type': 'Specifies the media type of the request body',
+      'accept': 'Specifies the media type that the client can process',
+      'authorization': 'Contains authentication credentials',
+      'user-agent': 'Identifies the client application',
+      'x-api-key': 'API key for authentication',
+      'x-csrf-token': 'CSRF protection token',
+      'cache-control': 'Specifies caching directives'
+    };
+    return descriptions[headerName.toLowerCase()] || 'Custom header for this API';
+  };
+
+  const generateParametersDocumentation = (params) => {
+    if (!Array.isArray(params) || params.length === 0) {
+      return `No query parameters were used in this request.`;
+    }
+
+    let table = `| Parameter | Value | Description |
+|-----------|-------|-------------|
+`;
+
+    params.forEach(param => {
+      if (param.key) {
+        const description = generateParameterDescription(param.key);
+        table += `| ${param.key} | ${param.value || '[value]'} | ${description} |
+`;
+      }
+    });
+
+    return table;
+  };
+
+  const generateParameterDescription = (paramName) => {
+    const name = paramName.toLowerCase();
+    if (name.includes('id')) return 'Unique identifier';
+    if (name.includes('page')) return 'Page number for pagination';
+    if (name.includes('limit') || name.includes('size')) return 'Number of items to return';
+    if (name.includes('search') || name.includes('query')) return 'Search query string';
+    if (name.includes('sort')) return 'Sort order or field';
+    if (name.includes('filter')) return 'Filter criteria';
+    return `Parameter for ${paramName}`;
+  };
+
+  const generateBodyDocumentation = (body, formData, bodyType) => {
+    if (bodyType === 'none' || (!body && (!formData || formData.length === 0))) {
+      return 'No request body was sent with this request.';
+    }
+
+    let documentation = `**Body Type**: ${bodyType}\n\n`;
+
+    if (body) {
+      if (bodyType === 'json') {
+        documentation += `**JSON Body**:
+\`\`\`json
+${body}
+\`\`\``;
+      } else {
+        documentation += `**Request Body**:
+\`\`\`
+${body}
+\`\`\``;
+      }
+    }
+
+    if (Array.isArray(formData) && formData.length > 0) {
+      documentation += `\n\n**Form Data Fields**:
+| Field | Value | Type |
+|-------|-------|------|
+`;
+      formData.forEach(field => {
+        if (field.key) {
+          documentation += `| ${field.key} | ${field.value || '[value]'} | ${field.type || 'text'} |
+`;
+        }
+      });
+    }
+
+    return documentation;
+  };
+
+  const generateActualResponseDocumentation = (response) => {
+    if (!response) {
+      return `**Response**: No response data available for this request.`;
+    }
+
+    let doc = `**Response Status**: ${response.status || 'Unknown'} ${response.statusText || ''}
+**Response Time**: ${response.responseTime || 'N/A'}ms
+`;
+
+    if (response.error) {
+      doc += `**Error**: ${response.message || 'Unknown error occurred'}`;
+    } else if (response.data) {
+      doc += `
+**Response Body**:
+\`\`\`json
+${JSON.stringify(response.data, null, 2)}
+\`\`\``;
+    }
+
+    if (response.headers && typeof response.headers === 'object') {
+      doc += `
+
+**Response Headers**:
+\`\`\`
+${Object.entries(response.headers).map(([key, value]) => `${key}: ${value}`).join('\n')}
+\`\`\``;
+    }
+
+    return doc;
+  };
+
+  const generateCurlExample = (requestData) => {
+    const { method, url, headers, body } = requestData;
+    
+    let curlCommand = `curl -X ${method} "${url}"`;
+    
+    // Add headers
+    if (headers) {
+      let headerArray = Array.isArray(headers) ? headers : Object.entries(headers).map(([key, value]) => ({ key, value }));
+      headerArray.forEach(header => {
+        if (header.key) {
+          curlCommand += ` \\\n  -H "${header.key}: ${header.value}"`;
+        }
+      });
+    }
+    
+    // Add body
+    if (body) {
+      curlCommand += ` \\\n  -d '${body}'`;
+    }
+    
+    return curlCommand;
+  };
+
+  const generateJavaScriptExample = (requestData) => {
+    const { method, url, headers, body } = requestData;
+    
+    let jsCode = `const response = await fetch('${url}', {
+  method: '${method}',`;
+    
+    // Add headers
+    if (headers) {
+      let headerArray = Array.isArray(headers) ? headers : Object.entries(headers).map(([key, value]) => ({ key, value }));
+      if (headerArray.some(h => h.key)) {
+        jsCode += `
+  headers: {`;
+        headerArray.forEach(header => {
+          if (header.key) {
+            jsCode += `
+    '${header.key}': '${header.value}',`;
+          }
+        });
+        jsCode = jsCode.slice(0, -1); // Remove last comma
+        jsCode += `
+  },`;
+      }
+    }
+    
+    // Add body
+    if (body) {
+      jsCode += `
+  body: '${body}',`;
+    }
+    
+    jsCode += `
+});
+
+const data = await response.json();
+console.log(data);`;
+    
+    return jsCode;
+  };
+
+  const generatePythonExample = (requestData) => {
+    const { method, url, headers, body } = requestData;
+    
+    let pythonCode = `import requests
+import json
+
+`;
+    
+    // Add headers
+    if (headers) {
+      let headerArray = Array.isArray(headers) ? headers : Object.entries(headers).map(([key, value]) => ({ key, value }));
+      if (headerArray.some(h => h.key)) {
+        pythonCode += `headers = {
+`;
+        headerArray.forEach(header => {
+          if (header.key) {
+            pythonCode += `    '${header.key}': '${header.value}',
+`;
+          }
+        });
+        pythonCode += `}
+
+`;
+      }
+    }
+    
+    pythonCode += `response = requests.${method.toLowerCase()}('${url}'`;
+    
+    if (headers && Object.keys(headers).length > 0) {
+      pythonCode += `, headers=headers`;
+    }
+    
+    if (body) {
+      pythonCode += `, data='${body}'`;
+    }
+    
+    pythonCode += `)
+
+print(response.json())`;
+    
+    return pythonCode;
+  };
+
+  const generateErrorHandlingDocumentation = () => {
+    return `**Common HTTP Status Codes**:
+- **200 OK**: Request successful
+- **201 Created**: Resource created successfully
+- **400 Bad Request**: Invalid request parameters
+- **401 Unauthorized**: Authentication required
+- **403 Forbidden**: Access denied
+- **404 Not Found**: Resource not found
+- **500 Internal Server Error**: Server error occurred`;
+  };
+
+  const generateBestPractices = (method, bodyType) => {
+    let practices = [
+      '- Always handle HTTP errors gracefully',
+      '- Implement retry logic for transient failures',
+      '- Use appropriate timeouts for requests',
+      '- Validate input data before sending requests',
+      '- Log requests and responses for debugging'
+    ];
+
+    if (method === 'POST' || method === 'PUT') {
+      practices.push('- Validate required fields before submission');
+    }
+
+    if (bodyType === 'json') {
+      practices.push('- Ensure JSON is properly formatted');
+    }
+
+    return practices.join('\n');
   };
 
   const downloadDocumentation = (documentation, request) => {

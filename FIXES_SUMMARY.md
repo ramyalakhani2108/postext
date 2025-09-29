@@ -60,20 +60,20 @@ Users needed a way to save API requests as documentation files locally using Ope
 - Generates documentation for the currently configured request
 - Professional gradient styling for the button
 
-#### 3. OpenAI Integration Features
-- Uses GPT-3.5-turbo for high-quality documentation generation
-- Comprehensive prompt engineering for professional output
-- Includes all request details (method, URL, headers, params, body, form data)
-- Generates multiple sections:
-  - API Endpoint Overview
-  - Request Format
-  - Parameters Description
-  - Headers Description
-  - Request Body/Payload
-  - Response Format
-  - Example Usage (curl, JavaScript, Python)
-  - Error Handling
-  - Notes and Best Practices
+#### 3. Local Intelligence Documentation Features
+- Uses advanced local algorithms for high-quality documentation generation
+- No external API calls required - works completely offline
+- Intelligent analysis of request details (method, URL, headers, params, body, form data)
+- Generates multiple professional sections:
+  - API Endpoint Overview with smart descriptions
+  - Request Format with detailed breakdowns
+  - Parameters Description with type detection
+  - Headers Description with purpose explanations
+  - Request Body/Payload analysis
+  - Response Format (including actual response data when available)
+  - Example Usage in multiple languages (curl, JavaScript, Python)
+  - Error Handling guidelines
+  - Best Practices recommendations
 
 #### 4. File Generation Features
 - Automatic filename generation with timestamp and endpoint info
@@ -102,8 +102,9 @@ Users needed a way to save API requests as documentation files locally using Ope
 3. Documentation will be generated and downloaded
 
 #### Prerequisites:
-- OpenAI API key must be configured in Settings
-- Internet connection required for OpenAI API calls
+- No external API keys required
+- Works completely offline
+- Uses intelligent local documentation generation
 
 ### Generated Documentation Format
 ```
@@ -120,10 +121,10 @@ Technical Details:
 ```
 
 ## Error Handling
-- Validates OpenAI API key presence before attempting generation
+- No API key validation required - works offline
 - Provides user-friendly error messages
-- Graceful fallback if API calls fail
-- Network error handling for OpenAI API
+- Robust local generation algorithms
+- No network dependencies for documentation generation
 
 ## Testing Recommendations
 
@@ -135,23 +136,24 @@ Technical Details:
 5. Verify all parameters, headers, and body data are restored
 
 ### Test Issue 2 (Documentation Generation):
-1. Configure OpenAI API key in Settings
-2. Create a sample API request with various parameters
-3. Click "Save Docs" button
-4. Verify professional documentation is generated and downloaded
-5. Test from History tab as well with "📝 Docs" button
+1. Create a sample API request with various parameters (no API key needed)
+2. Click "Save Docs" button
+3. Verify professional documentation is generated and downloaded instantly
+4. Test from History tab as well with "📝 Docs" button
+5. Verify documentation includes intelligent analysis and code examples
 
 ## Technical Notes
-- Documentation generation uses OpenAI's GPT-3.5-turbo model
-- Token limit set to 2500 for comprehensive documentation
-- Temperature set to 0.3 for consistent, professional output
-- All user data is handled securely (OpenAI API key stored locally)
+- Documentation generation uses advanced local algorithms for intelligent analysis
+- No external API calls - completely offline functionality
+- Intelligent parameter type detection and description generation
+- Smart endpoint analysis and method-specific documentation
 - File downloads use browser's native download API
+- No user data sent to external services - complete privacy
 
 ## Browser Compatibility
 - Works in all modern browsers that support Chrome extensions
 - File download functionality uses standard HTML5 APIs
-- OpenAI API calls use standard fetch API
+- No external dependencies - works completely offline
 
 ---
 *Both issues have been successfully resolved and are ready for testing.*
